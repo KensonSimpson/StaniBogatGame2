@@ -1,0 +1,201 @@
+﻿@{
+    ViewData["Title"] = "Стани Богат";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div id="fadeOverlay" class="fade-overlay"></div>
+<div class="game-back-button-container" style="display: none;">
+    <button id="gameBackButton" class="game-back-button" style="display: none;">← Назад към началния екран</button>
+</div>
+
+<!-- START MENU -->
+<div id="startMenu" class="start-menu" style="display: flex;">
+    <div class="start-buttons-container">
+        <button id="tutorialButton" class="tutorial-button">КАК СЕ ИГРАЕ</button>
+        <button id="startButton" class="start-button">ЗАПОЧНИ ИГРА</button>
+        <button id="spinningWheelButton" class="spinning-wheel-button">КОЛЕЛО НА КЪСМЕТА</button>
+    </div>
+</div>
+
+<div id="themeSelectionScreen" class="theme-selection-screen" style="display: none;">
+    <div class="theme-selection-content">
+        <h2 class="theme-selection-title">Изберете тема</h2>
+        <div class="theme-buttons-container"></div>   <!-- This is critical -->
+        <button id="backFromThemeButton" class="back-button">← Назад към началния екран</button>
+    </div>
+</div>
+<!-- SETTINGS BUTTON & MODAL -->
+<button id="settingsButton" class="settings-button">⚙️</button>
+<div id="settingsModal" class="settings-modal" style="display: none;">
+    <div class="settings-content">
+        <h2>⚙️ Настройки</h2>
+        <!-- Audio Settings -->
+        <div class="setting-group">
+            <h3>🔊 Звукови ефекти</h3>
+            <div class="volume-control">
+                <label for="sfxVolume">Сила на звуците:</label>
+                <input type="range" id="sfxVolume" min="0" max="100" value="100" class="volume-slider">
+                <span id="sfxVolumeValue">100%</span>
+            </div>
+        </div>
+        <!-- Music Settings -->
+        <div class="setting-group">
+            <h3>🎵 Музика</h3>
+            <div class="volume-control">
+                <label for="musicVolume">Сила на музиката:</label>
+                <input type="range" id="musicVolume" min="0" max="100" value="100" class="volume-slider">
+                <span id="musicVolumeValue">100%</span>
+            </div>
+            <div class="music-toggle">
+                <button id="toggleStartMusic" class="music-toggle-btn">🎵 Включи музика в началния екран</button>
+                <button id="toggleWheelMusic" class="music-toggle-btn">🎵 Включи музика в колелото</button>
+            </div>
+        </div>
+        <!-- Language Settings -->
+        <div class="setting-group">
+            <h3>🌍 Език / Language</h3>
+            <div class="language-buttons-vertical">
+                <button class="language-btn" data-lang="bg">🇧🇬 Български</button>
+                <button class="language-btn" data-lang="en">🇺🇸 English</button>
+                <button class="language-btn" data-lang="es">🇪🇸 Español</button>
+                <button class="language-btn" data-lang="de">🇩🇪 Deutsch</button>
+                <button class="language-btn" data-lang="zh">🇨🇳 中文</button>
+                <button class="language-btn" data-lang="ru">🇷🇺 Русский</button>
+                <button class="language-btn" data-lang="pt">🇵🇹 Português</button>
+            </div>
+        </div>
+        <!-- Buttons -->
+        <div class="settings-buttons">
+            <button id="closeSettings" class="close-settings-btn">Затвори</button>
+            <button id="resetSettings" class="reset-settings-btn">Възстанови настройки по подразбиране</button>
+        </div>
+    </div>
+</div>
+
+<!-- TUTORIAL SCREEN -->
+<div id="tutorialScreen" class="tutorial-screen" style="display: none;">
+    <div class="tutorial-content">
+        <h2 class="tutorial-title">📚 Как се играе Стани Богат</h2>
+        <div class="tutorial-section">
+            <h3>🎯 Цел на играта</h3>
+            <p class="tutorial-text">
+                Отговорете правилно на 15 последователни въпроса и спечелете до 100,000 лева!
+                Всеки въпрос е по-труден от предишния, но и наградата е по-голяма.
+            </p>
+        </div>
+        <div class="tutorial-section">
+            <h3>❓ Как се играе</h3>
+            <ul>
+                <li>Прочетете внимателно въпроса</li>
+                <li>Изберете един от 4-те възможни отговора</li>
+                <li>Имате 3 помощни жокери, които можете да използвате</li>
+                <li>Ако отговорите правилно, продължавате към следващия въпрос</li>
+                <li>Ако сгрешите, играта приключва и запазвате последната си гарантирана сума</li>
+            </ul>
+        </div>
+        <div class="tutorial-section">
+            <h3>🃏 Помощни жокери</h3>
+            <ul>
+                <li><strong>50:50</strong> - Компютърът премахва два грешни отговора</li>
+                <li><strong>Публика</strong> - Публиката гласува за верния отговор (с определена точност)</li>
+                <li><strong>Телефонен обаждане</strong> - Имате 30 секунди да се допитате до приятел</li>
+            </ul>
+            <p class="tutorial-text">Всеки жокер може да се използва само веднъж!</p>
+        </div>
+        <div class="tutorial-section">
+            <h3>💰 Парично дърво</h3>
+            <p class="tutorial-text">
+                Играта има 15 нива със следните награди:<br>
+                <strong>Гарантирани суми:</strong> 1,000 лв (въпрос 7) и 10,000 лв (въпрос 11)<br>
+                <strong>Главна награда:</strong> 100,000 лв (въпрос 15)
+            </p>
+        </div>
+        <button id="backButton" class="back-button">← Назад към началния екран</button>
+    </div>
+</div>
+
+<!-- SPINNING WHEEL SCREEN -->
+<div id="spinningWheelScreen" class="spinning-wheel-screen" style="display: none;">
+    <h2 class="spinning-wheel-title">🎡 Колело на късмета</h2>
+    <p class="spinning-wheel-text">Завърти колелото, за да избереш участник!</p>
+    <div class="wheel-container">
+        <div class="wheel" id="wheel"></div>
+        <div class="wheel-pointer"></div>
+    </div>
+    <div class="spin-button-container">
+        <button id="spinButton" class="spin-button">ЗАВЪРТИ</button>
+    </div>
+    <div id="resultModal" class="result-modal" style="display: none;">
+        <div class="result-modal-content">
+            <h3>🎉 Избран участник:</h3>
+            <div id="selectedName" class="selected-name"></div>
+            <button id="spinAgainButton" class="spin-again-button">Завърти отново</button>
+        </div>
+    </div>
+    <div class="back-button-container">
+        <button id="backFromWheelButton" class="back-button">← Назад към началния екран</button>
+    </div>
+</div>
+
+<!-- GAME CONTAINER (initially hidden) -->
+<div class="level-indicator" style="display: none;">Въпрос: <span id="currentLevel">1</span>/15 | Печалба: <span id="currentPrize">100 лв</span></div>
+<div id="gameContainer" class="game-container" style="display: none;">
+    <h1>🎮 СТАНИ БОГАТ 🎮</h1>
+    <div id="game-area">
+        <div class="question" id="questionText">Зареждане на играта...</div>
+        <div class="answers" id="answersContainer"></div>
+        <div id="skipHint" style="display: none; color: gold; font-size: 14px; margin-top: 10px;">
+            Натиснете Space или щракнете навсякъде, за да пропуснете анимацията
+        </div>
+    </div>
+</div>
+
+<!-- MONEY TREE TOGGLE BUTTON (hidden initially) -->
+<button id="moneyTreeToggle" class="money-tree-toggle" style="display: none;">💰</button>
+
+<!-- MONEY TREE (hidden initially) -->
+<div class="money-tree" id="moneyTree" style="display: none;">
+    <div class="jokers">
+        <button class="joker-btn" id="joker5050" onclick="useFiftyFifty()"><span class="joker-text">50:50</span></button>
+        <button class="joker-btn" id="jokerAudience" onclick="useAudience()"><span class="joker-text">👥 Публика</span></button>
+        <button class="joker-btn" id="jokerPhone" onclick="usePhone()"><span class="joker-text">📞 Телефон</span></button>
+    </div>
+    <div class="money-item">15. 100,000 лв</div>
+    <div class="money-item">14. 50,000 лв</div>
+    <div class="money-item">13. 30,000 лв</div>
+    <div class="money-item">12. 20,000 лв</div>
+    <div class="money-item">11. 10,000 лв</div>
+    <div class="money-item">10. 5,000 лв</div>
+    <div class="money-item">9. 3,000 лв</div>
+    <div class="money-item">8. 2,000 лв</div>
+    <div class="money-item">7. 1,500 лв</div>
+    <div class="money-item">6. 1,000 лв</div>
+    <div class="money-item">5. 500 лв</div>
+    <div class="money-item">4. 400 лв</div>
+    <div class="money-item">3. 300 лв</div>
+    <div class="money-item">2. 200 лв</div>
+    <div class="money-item">1. 100 лв</div>
+</div>
+
+<!-- JOKER MODALS (hidden initially) -->
+<div id="phoneJokerModal" class="phone-modal" style="display: none;">
+    <div class="phone-modal-content">
+        <h2>📞 Помощ от приятел</h2>
+        <div id="phoneTimer" class="phone-timer">30</div>
+        <p>Приятелят ви мисли...</p>
+        <button id="closePhoneModal" class="close-phone-modal">Затвори</button>
+    </div>
+</div>
+<div id="audienceJokerModal" class="audience-modal" style="display: none;">
+    <div class="audience-modal-content">
+        <h2 class="audience-title">Джокер: Помощ от публиката</h2>
+        <p class="audience-vote-text">Гласувайте СЕГА!</p>
+        <button id="closeAudienceModal" class="close-audience-modal">Затвори</button>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/translations.js"></script>
+    <script src="~/js/questions-data.js"></script>
+    <script src="~/js/Game.js"></script>
+}

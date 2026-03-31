@@ -1,0 +1,28 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Стани Богат</title>
+    <link rel="stylesheet" href="~/css/Visual.css" />
+</head>
+<body>
+    <!-- Audio Elements for Sound Effects -->
+    <audio id="moveForwardSound" src="~/sounds/HardQuestionMoveForward.mp3" preload="auto"></audio>
+    <audio id="answerChosenSound" src="~/sounds/AnswerChosen.mp3" preload="auto"></audio>
+    <audio id="joker5050Sound" src="~/sounds/5050.mp3" preload="auto"></audio>
+    <audio id="correctAnswerSound" src="~/sounds/CorrectAnswer.mp3" preload="auto"></audio>
+    <audio id="correctAnswer2" src="~/sounds/CorrectAnswer2.mp3" preload="auto"></audio>
+    <audio id="correctAnswer3" src="~/sounds/CorrectAnswer3.mp3" preload="auto"></audio>
+    <audio id="wrongAnswerSound" src="~/sounds/WrongAnswer.mp3" preload="auto"></audio>
+    <audio id="friendJokerTimeTick1" src="~/sounds/FriendJokerTimeTick.mp3" preload="auto"></audio>
+    <audio id="friendJokerTimeTick2" src="~/sounds/FriendJokerTimeTick.mp3" preload="auto"></audio>
+    <!-- Retro Music for Spinning Wheel -->
+    <audio id="retroMusic" src="~/sounds/StaniBogatRetroMusic.mp3" preload="auto" loop></audio>
+    <audio id="startMenuMusic" src="~/sounds/StartMenuMusic.mp3" preload="auto" loop></audio>
+
+    @RenderBody()
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
