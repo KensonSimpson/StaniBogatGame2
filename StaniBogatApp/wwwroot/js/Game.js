@@ -1,4 +1,4 @@
-﻿// ============================================
+// ============================================
 // GAME CONFIGURATION
 // ============================================
 const GAME_CONFIG = {
@@ -918,3 +918,4 @@ document.addEventListener('DOMContentLoaded', function () {
         console.error("CRITICAL ERROR during initialization:", err);
         alert("Възникна грешка при инициализация.");
     }
+});
