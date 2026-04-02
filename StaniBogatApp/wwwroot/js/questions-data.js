@@ -1,4 +1,4 @@
-﻿const QUESTIONS_DATA = {
+const QUESTIONS_DATA = {
     "Стани Богат": {
         "bg": [
             { question: "Коя от следните бройни системи е непозиционна?", answers: ["Двоична", "Десетична", "Римска", "Осмична"], correct: 2 },
@@ -36,6 +36,25 @@
             { question: "Как се казва 'любов' на руски?", answers: ["Дружба", "Любовь", "Счастье", "Радость"], correct: 1 },
             { question: "Как се казва 'добро утро' на руски?", answers: ["Добрый день", "Доброе утро", "Добрый вечер", "Спокойной ночи"], correct: 1 }
         ]
+    },
+    "Математика": {
+        "bg": [
+            { question: "Колко е 15 × 4?", answers: ["45", "60", "75", "80"], correct: 1 },
+            { question: "Колко е 144 ÷ 12?", answers: ["10", "11", "12", "13"], correct: 2 },
+            { question: "Колко е 7² + 3²?", answers: ["49", "58", "63", "70"], correct: 1 },
+            { question: "Какъв е корен квадратен от 169?", answers: ["11", "12", "13", "14"], correct: 2 },
+            { question: "Колко процента е 25 от 200?", answers: ["10%", "12.5%", "15%", "20%"], correct: 1 },
+            { question: "Решете уравнението: 3x + 5 = 20", answers: ["3", "5", "7", "10"], correct: 1 },
+            { question: "Колко е обиколката на кръг с радиус 7 см? (π ≈ 3.14)", answers: ["21.98 см", "43.96 см", "49 см", "153.86 см"], correct: 1 },
+            { question: "Колко е лицето на правоъгълник със страни 8 м и 5 м?", answers: ["13 м²", "26 м²", "40 м²", "80 м²"], correct: 2 },
+            { question: "Коя дроб е равна на 0.75?", answers: ["1/4", "2/3", "3/4", "4/5"], correct: 2 },
+            { question: "Колко е 5! (факториел)?", answers: ["60", "100", "120", "150"], correct: 2 },
+            { question: "Сборът на ъглите в триъгълник е:", answers: ["90°", "180°", "270°", "360°"], correct: 1 },
+            { question: "Колко е 2³ × 2⁴?", answers: ["2⁷", "2¹²", "4⁷", "8⁷"], correct: 0 },
+            { question: "Колко е медианата на числата 5, 8, 12, 15, 20?", answers: ["8", "12", "15", "20"], correct: 1 },
+            { question: "Колко е 0.2 × 0.3?", answers: ["0.06", "0.6", "0.006", "6"], correct: 0 },
+            { question: "Ако a = 4 и b = 3, колко е a² + b²?", answers: ["7", "12", "25", "49"], correct: 2 }
+        ]
     }
 };
 
@@ -46,7 +65,6 @@ const PRIZES = [
     "10,000 BGN", "20,000 BGN", "30,000 BGN", "50,000 BGN", "100,000 BGN"
 ];
 
-// Optional editor – keep as is
 function openQuestionEditor() {
     const editor = `
     <div class="question-editor">
@@ -54,6 +72,7 @@ function openQuestionEditor() {
         <select id="themeSelect">
             <option value="Стани Богат">Стани Богат</option>
             <option value="Руски език">Руски език</option>
+            <option value="Математика">Математика</option>
         </select>
         <textarea id="questionText" placeholder="Въпрос..."></textarea>
         <input type="text" id="answer1" placeholder="Отговор 1">
