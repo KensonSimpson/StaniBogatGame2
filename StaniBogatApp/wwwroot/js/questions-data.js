@@ -1,4 +1,57 @@
-"], correct: 1 },
+// Force load indication
+(function() {
+    var banner = document.createElement('div');
+    banner.style.cssText = 'background:lime; color:black; padding:5px; text-align:center; position:fixed; bottom:0; left:0; width:100%; z-index:9999; font-size:12px;';
+    banner.innerText = '✓ questions-data.js loaded (all 5 themes)';
+    document.body.appendChild(banner);
+})();
+
+const QUESTIONS_DATA = {
+    "Стани Богат": {
+        "bg": [
+            { question: "Коя от следните бройни системи е непозиционна?", answers: ["Двоична", "Десетична", "Римска", "Осмична"], correct: 2 },
+            { question: "Кое твърдение се отнася за позиционната бройна система?", answers: ["Тя се използва за превеждане на езици", "Зависи позицията на символите и цифрите в числото", "Не може да се преобразува в други бройни системи", "Няма значение къде се намира мястото на цифрата/символа в числото"], correct: 1 },
+            { question: "Кой програмен език може да се използва за работа с бройни системи?", answers: ["Python", "HTML", "CSS", "BOOTSTRAP"], correct: 0 },
+            { question: "Кое твърдение е вярно за побитовите операции?", answers: ["Те са много сложни за разбиране и само експертите могат да разполагат с тях", "Те са остарели и са безсмислени в днешно време", "Те са операции, които работят с отделните битове на данните", "Те са наименование за абстрактни типове данни(АТД)"], correct: 2 },
+            { question: "Колко вида позиционни бройни системи има?", answers: ["5", "4", "6", "7"], correct: 1 },
+            { question: "Коя бройна система е най-удобна за използване от хората?", answers: ["Двоичната", "Шестнадесетичната", "Човешката", "Десетичната"], correct: 3 },
+            { question: "101101(2)+10001(2) е равно на:", answers: ["111110(2)", "111102(2)", "1001101(2)", "10101(2)"], correct: 0 },
+            { question: "Числото 1000011(2) в двоична БС как би изглеждало в шестнадесетична?", answers: ["A5", "43", "45", "67"], correct: 1 },
+            { question: "Коя от стойностите НЕ може да съществува в шестнадесетичната бройна система?", answers: ["55899330(16)", "DEF426788(16)", "BCDABDDFC(16)", "556GCEA8(16)"], correct: 3 },
+            { question: 'Клод Шанън "ражда" двоичната система в компютрите. Кога се случва това събитие?', answers: ["На 4 Април 1936г.", "На 10 август 1937г.", "На септември 11 2001г.", "На 12 май 1941г."], correct: 1 },
+            { question: "557622(8)-36625(8) e равно на:", answers: ["520 997(8)", "519 767(8)", "520 775(8)", "2A1FF(16)"], correct: 2 },
+            { question: "Кое твърдение е вярно?", answers: ["Побитовите операции работят с осмична БС", "Извадка е подмножество от генералната съвкупност", "Непозиционната БС е лесна за представяне на големи числа", "Основната цел на БС е да усложнява пресмятането на числата"], correct: 1 },
+            { question: "Кой ред е възможен при шестнадесетична БС?", answers: ["55FFECAA355B", "311!BVV6-%45", "463DE3E2H9", "FGGE4V46N7I"], correct: 0 },
+            { question: "Кое твърдение се отнася за осмичната БС?", answers: ["Използва се за машинен код", "Единствената БС, използваща се в международни стандарти", "По-компактна е от двоичната БС", "Тя е най-разпространена за дебугване на паметта"], correct: 2 },
+            { question: "Частното на AA7DDC89(16):FC6FD5(16) е:", answers: ["4BB(16)", "79(16)", "AC(16)", "3D0(16)"], correct: 2 }
+        ]
+    },
+    "Руски език": {
+        "bg": [
+            { question: "Как се казва 'здравей' на руски?", answers: ["Привет", "Здравствуйте", "Добрый день", "Спасибо"], correct: 0 },
+            { question: "Как се казва 'благодаря' на руски?", answers: ["Пожалуйста", "Спасибо", "Извините", "Здравствуйте"], correct: 1 },
+            { question: "Как се превежда 'училище' на руски?", answers: ["Школа", "Университет", "Институт", "Колледж"], correct: 0 },
+            { question: "Какво означава 'дружба'?", answers: ["Приятелство", "Вражда", "Любов", "Семейство"], correct: 0 },
+            { question: "Как се казва 'книга' на руски?", answers: ["Тетрадь", "Книга", "Журнал", "Газета"], correct: 1 },
+            { question: "Как се казва 'вода' на руски?", answers: ["Огонь", "Воздух", "Вода", "Земля"], correct: 2 },
+            { question: "Коя е руската дума за 'добър ден'?", answers: ["Доброе утро", "Добрый день", "Добрый вечер", "Спокойной ночи"], correct: 1 },
+            { question: "Как се казва 'момче' на руски?", answers: ["Девочка", "Мальчик", "Мужчина", "Парень"], correct: 1 },
+            { question: "Как се казва 'момиче' на руски?", answers: ["Девочка", "Женщина", "Девушка", "Девочка"], correct: 0 },
+            { question: "Коя е руската дума за 'учител'?", answers: ["Ученик", "Учитель", "Студент", "Преподаватель"], correct: 1 },
+            { question: "Как се казва 'къща' на руски?", answers: ["Дом", "Квартира", "Здание", "Строение"], correct: 0 },
+            { question: "Как се казва 'кола' на руски?", answers: ["Автобус", "Машина", "Поезд", "Самолёт"], correct: 1 },
+            { question: "Коя е руската дума за 'храна'?", answers: ["Еда", "Пища", "Кушать", "Есть"], correct: 0 },
+            { question: "Как се казва 'любов' на руски?", answers: ["Дружба", "Любовь", "Счастье", "Радость"], correct: 1 },
+            { question: "Как се казва 'добро утро' на руски?", answers: ["Добрый день", "Доброе утро", "Добрый вечер", "Спокойной ночи"], correct: 1 }
+        ]
+    },
+    "Математика": {
+        "bg": [
+            { question: "Колко е 15 × 4?", answers: ["45", "60", "75", "80"], correct: 1 },
+            { question: "Колко е 144 ÷ 12?", answers: ["10", "11", "12", "13"], correct: 2 },
+            { question: "Колко е 7² + 3²?", answers: ["49", "58", "63", "70"], correct: 1 },
+            { question: "Какъв е корен квадратен от 169?", answers: ["11", "12", "13", "14"], correct: 2 },
+            { question: "Колко процента е 25 от 200?", answers: ["10%", "12.5%", "15%", "20%"], correct: 1 },
             { question: "Решете уравнението: 3x + 5 = 20", answers: ["3", "5", "7", "10"], correct: 1 },
             { question: "Колко е обиколката на кръг с радиус 7 см? (π ≈ 3.14)", answers: ["21.98 см", "43.96 см", "49 см", "153.86 см"], correct: 1 },
             { question: "Колко е лицето на правоъгълник със страни 8 м и 5 м?", answers: ["13 м²", "26 м²", "40 м²", "80 м²"], correct: 2 },
@@ -51,7 +104,6 @@
     }
 };
 
-// Prizes remain the same for all themes (used from TRANSLATIONS)
 const PRIZES = [
     "100 BGN", "200 BGN", "300 BGN", "400 BGN", "500 BGN",
     "1,000 BGN", "1,500 BGN", "2,000 BGN", "3,000 BGN", "5,000 BGN",
@@ -83,85 +135,4 @@ function openQuestionEditor() {
         <button onclick="saveQuestion()">Запази</button>
     </div>
     `;
-    // You can implement saveQuestion() to store new questions
-}            { question: "Как се казва 'добро утро' на руски?", answers: ["Добрый день", "Доброе утро", "Добрый вечер", "Спокойной ночи"], correct: 1 }
-        ]
-    },
-    "Математика": {
-        "bg": [
-            { question: "Колко е 15 × 4?", answers: ["45", "60", "75", "80"], correct: 1 },
-            { question: "Колко е 144 ÷ 12?", answers: ["10", "11", "12", "13"], correct: 2 },
-            { question: "Колко е 7² + 3²?", answers: ["49", "58", "63", "70"], correct: 1 },
-            { question: "Какъв е корен квадратен от 169?", answers: ["11", "12", "13", "14"], correct: 2 },
-            { question: "Колко процента е 25 от 200?", answers: ["10%", "12.5%", "15%", "20%"], correct: 1 },
-            { question: "Решете уравнението: 3x + 5 = 20", answers: ["3", "5", "7", "10"], correct: 1 },
-            { question: "Колко е обиколката на кръг с радиус 7 см? (π ≈ 3.14)", answers: ["21.98 см", "43.96 см", "49 см", "153.86 см"], correct: 1 },
-            { question: "Колко е лицето на правоъгълник със страни 8 м и 5 м?", answers: ["13 м²", "26 м²", "40 м²", "80 м²"], correct: 2 },
-            { question: "Коя дроб е равна на 0.75?", answers: ["1/4", "2/3", "3/4", "4/5"], correct: 2 },
-            { question: "Колко е 5! (факториел)?", answers: ["60", "100", "120", "150"], correct: 2 },
-            { question: "Сборът на ъглите в триъгълник е:", answers: ["90°", "180°", "270°", "360°"], correct: 1 },
-            { question: "Колко е 2³ × 2⁴?", answers: ["2⁷", "2¹²", "4⁷", "8⁷"], correct: 0 },
-            { question: "Колко е медианата на числата 5, 8, 12, 15, 20?", answers: ["8", "12", "15", "20"], correct: 1 },
-            { question: "Колко е 0.2 × 0.3?", answers: ["0.06", "0.6", "0.006", "6"], correct: 0 },
-            { question: "Ако a = 4 и b = 3, колко е a² + b²?", answers: ["7", "12", "25", "49"], correct: 2 }
-        ]
-    }
-};
-
-// Prizes remain the same for all themes (used from TRANSLATIONS)
-const PRIZES = [
-    "100 BGN", "200 BGN", "300 BGN", "400 BGN", "500 BGN",
-    "1,000 BGN", "1,500 BGN", "2,000 BGN", "3,000 BGN", "5,000 BGN",
-    "10,000 BGN", "20,000 BGN", "30,000 BGN", "50,000 BGN", "100,000 BGN"
-];
-
-function openQuestionEditor() {
-    const editor = `
-    <div class="question-editor">
-        <h3>Добави въпрос</h3>
-        <select id="themeSelect">
-            <option value="Стани Богат">Стани Богат</option>
-            <option value="Руски език">Руски език</option>
-            <option value="Математика">Математика</option>
-        </select>
-        <textarea id="questionText" placeholder="Въпрос..."></textarea>
-        <input type="text" id="answer1" placeholder="Отговор 1">
-        <input type="text" id="answer2" placeholder="Отговор 2">
-        <input type="text" id="answer3" placeholder="Отговор 3">
-        <input type="text" id="answer4" placeholder="Отговор 4">
-        <select id="correctAnswer">
-            <option value="0">Отговор 1</option>
-            <option value="1">Отговор 2</option>
-            <option value="2">Отговор 3</option>
-            <option value="3">Отговор 4</option>
-        </select>
-        <button onclick="saveQuestion()">Запази</button>
-    </div>
-    `;
-    // You can implement saveQuestion() to store new questions
-};
-// Add a visible banner
-(function() {
-    var div = document.createElement('div');
-    div.style.cssText = 'background: red; color: white; text-align: center; padding: 10px; position: fixed; top: 0; left: 0; width: 100%; z-index: 9999;';
-    div.innerText = '✅ questions-data.js loaded successfully!';
-    document.body.appendChild(div);
-})();
-
-const QUESTIONS_DATA = {
-    "Стани Богат": {
-        "bg": [
-            { question: "Test question 1?", answers: ["A", "B", "C", "D"], correct: 0 },
-            { question: "Test question 2?", answers: ["A", "B", "C", "D"], correct: 1 }
-        ]
-    },
-    "Руски език": {
-        "bg": [
-            { question: "Test Russian 1?", answers: ["A", "B", "C", "D"], correct: 2 },
-            { question: "Test Russian 2?", answers: ["A", "B", "C", "D"], correct: 3 }
-        ]
-    }
-};
-
-const PRIZES = [];
-function openQuestionEditor() {}
+                        }
