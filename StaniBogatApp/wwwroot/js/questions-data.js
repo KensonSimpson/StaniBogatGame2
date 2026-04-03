@@ -170,4 +170,69 @@ const QUESTIONS_DATA = {
             { question: "Коя е традиционната игра за Хелоуин?", answers: ["Trick-or-treat", "Egg hunting", "Caroling", "Fireworks"], correct: 0 },
             { question: "Кога се празнува Денят на независимостта на САЩ?", answers: ["4 юли", "1 юли", "14 юли", "2 юли"], correct: 0 },
             { question: "Коя е традиционната украса за Коледа?", answers: ["Елха", "Тиква", "Великденски яйца", "Цветя"], correct: 0 },
-            { question: "Коя е традиционната 
+            { question: "Коя е традиционната напитка за Деня на Свети Патрик?", answers: ["Бира", "Уиски", "Вода", "Сок"], correct: 0 },
+            { question: "Кога се празнува Международният ден на жената?", answers: ["8 март", "1 март", "8 април", "1 април"], correct: 0 },
+            { question: "Коя е традицията за Деня на бащата?", answers: ["Подаряване на подаръци на бащата", "Печене на пуйка", "Търсене на яйца", "Пускане на фойерверки"], correct: 0 },
+            { question: "Кога е Денят на Земята?", answers: ["22 април", "1 април", "22 март", "1 март"], correct: 0 },
+            { question: "Коя е традиционната игра за Великден?", answers: ["Търсене на яйца", "Trick-or-treat", "Коледуване", "Пускане на хвърчила"], correct: 0 },
+            { question: "Кога се празнува Денят на труда в САЩ?", answers: ["Първи понеделник на септември", "1 май", "4 юли", "2 септември"], correct: 0 }
+        ]
+    },
+    "Databases": {
+        "bg": [
+            { question: "Какво означава SQL?", answers: ["Structured Query Language", "Simple Query Language", "Standard Query Language", "System Query Language"], correct: 0 },
+            { question: "Коя команда се използва за извличане на данни от база данни?", answers: ["SELECT", "INSERT", "UPDATE", "DELETE"], correct: 0 },
+            { question: "Какво е първичен ключ?", answers: ["Уникален идентификатор на запис", "Ключ за сортиране", "Индекс", "Външен ключ"], correct: 0 },
+            { question: "Коя команда се използва за добавяне на нов запис?", answers: ["INSERT INTO", "ADD", "CREATE", "UPDATE"], correct: 0 },
+            { question: "Какво е външен ключ?", answers: ["Поле, което препраща към първичен ключ в друга таблица", "Уникален идентификатор", "Индекс", "Ключ за сортиране"], correct: 0 },
+            { question: "Коя команда се използва за изтриване на таблица?", answers: ["DROP TABLE", "DELETE TABLE", "REMOVE TABLE", "TRUNCATE TABLE"], correct: 0 },
+            { question: "Какво означава нормализация?", answers: ["Процес на организиране на данни за намаляване на излишъка", "Сортиране на данни", "Компресиране на данни", "Шифроване на данни"], correct: 0 },
+            { question: "Коя функция се използва за преброяване на редове?", answers: ["COUNT()", "SUM()", "AVG()", "MAX()"], correct: 0 },
+            { question: "Какво е индекс в база данни?", answers: ["Структура, която ускорява търсенето", "Вид ключ", "Тип данни", "Ограничение"], correct: 0 },
+            { question: "Коя клауза се използва за филтриране на резултати?", answers: ["WHERE", "HAVING", "FILTER", "CONDITION"], correct: 0 },
+            { question: "Какво означава ACID?", answers: ["Atomicity, Consistency, Isolation, Durability", "Atomic, Consistent, Isolated, Durable", "Access, Control, Integrity, Data", "Auto, Commit, Isolated, Data"], correct: 0 },
+            { question: "Коя команда се използва за създаване на нова таблица?", answers: ["CREATE TABLE", "NEW TABLE", "MAKE TABLE", "DEFINE TABLE"], correct: 0 },
+            { question: "Какво е транзакция?", answers: ["Поредица от операции, които се изпълняват като едно цяло", "Заявка", "Съхранение", "Индекс"], correct: 0 },
+            { question: "Коя команда се използва за промяна на структура на таблица?", answers: ["ALTER TABLE", "MODIFY TABLE", "CHANGE TABLE", "UPDATE TABLE"], correct: 0 },
+            { question: "Какво означава NoSQL?", answers: ["Non-relational database", "Not only SQL", "New SQL", "Non-Standard Query Language"], correct: 0 }
+        ]
+    }
+};
+
+const PRIZES = [
+    "100 BGN", "200 BGN", "300 BGN", "400 BGN", "500 BGN",
+    "1,000 BGN", "1,500 BGN", "2,000 BGN", "3,000 BGN", "5,000 BGN",
+    "10,000 BGN", "20,000 BGN", "30,000 BGN", "50,000 BGN", "100,000 BGN"
+];
+
+function openQuestionEditor() {
+    const editor = `
+    <div class="question-editor">
+        <h3>Добави въпрос</h3>
+        <select id="themeSelect">
+            <option value="Стани Богат">Стани Богат</option>
+            <option value="Руски език">Руски език</option>
+            <option value="Математика">Математика</option>
+            <option value="Общи знания">Общи знания</option>
+            <option value="Minecraft">Minecraft</option>
+            <option value="Super Mario">Super Mario</option>
+            <option value="Movies">Movies</option>
+            <option value="Geometry Dash">Geometry Dash</option>
+            <option value="Holidays">Holidays</option>
+            <option value="Databases">Databases</option>
+        </select>
+        <textarea id="questionText" placeholder="Въпрос..."></textarea>
+        <input type="text" id="answer1" placeholder="Отговор 1">
+        <input type="text" id="answer2" placeholder="Отговор 2">
+        <input type="text" id="answer3" placeholder="Отговор 3">
+        <input type="text" id="answer4" placeholder="Отговор 4">
+        <select id="correctAnswer">
+            <option value="0">Отговор 1</option>
+            <option value="1">Отговор 2</option>
+            <option value="2">Отговор 3</option>
+            <option value="3">Отговор 4</option>
+        </select>
+        <button onclick="saveQuestion()">Запази</button>
+    </div>
+    `;
+}
