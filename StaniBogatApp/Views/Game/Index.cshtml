@@ -1,4 +1,4 @@
-﻿@{
+@{
     ViewData["Title"] = "Стани Богат";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -17,19 +17,20 @@
     </div>
 </div>
 
+<!-- THEME SELECTION SCREEN -->
 <div id="themeSelectionScreen" class="theme-selection-screen" style="display: none;">
     <div class="theme-selection-content">
         <h2 class="theme-selection-title">Изберете тема</h2>
-        <div class="theme-buttons-container"></div>   <!-- This is critical -->
+        <div class="theme-buttons-container"></div>
         <button id="backFromThemeButton" class="back-button">← Назад към началния екран</button>
     </div>
 </div>
+
 <!-- SETTINGS BUTTON & MODAL -->
 <button id="settingsButton" class="settings-button">⚙️</button>
 <div id="settingsModal" class="settings-modal" style="display: none;">
     <div class="settings-content">
         <h2>⚙️ Настройки</h2>
-        <!-- Audio Settings -->
         <div class="setting-group">
             <h3>🔊 Звукови ефекти</h3>
             <div class="volume-control">
@@ -38,7 +39,6 @@
                 <span id="sfxVolumeValue">100%</span>
             </div>
         </div>
-        <!-- Music Settings -->
         <div class="setting-group">
             <h3>🎵 Музика</h3>
             <div class="volume-control">
@@ -51,7 +51,6 @@
                 <button id="toggleWheelMusic" class="music-toggle-btn">🎵 Включи музика в колелото</button>
             </div>
         </div>
-        <!-- Language Settings -->
         <div class="setting-group">
             <h3>🌍 Език / Language</h3>
             <div class="language-buttons-vertical">
@@ -64,7 +63,6 @@
                 <button class="language-btn" data-lang="pt">🇵🇹 Português</button>
             </div>
         </div>
-        <!-- Buttons -->
         <div class="settings-buttons">
             <button id="closeSettings" class="close-settings-btn">Затвори</button>
             <button id="resetSettings" class="reset-settings-btn">Възстанови настройки по подразбиране</button>
@@ -137,7 +135,7 @@
     </div>
 </div>
 
-<!-- GAME CONTAINER (initially hidden) -->
+<!-- GAME CONTAINER -->
 <div class="level-indicator" style="display: none;">Въпрос: <span id="currentLevel">1</span>/15 | Печалба: <span id="currentPrize">100 лв</span></div>
 <div id="gameContainer" class="game-container" style="display: none;">
     <h1>🎮 СТАНИ БОГАТ 🎮</h1>
@@ -150,10 +148,10 @@
     </div>
 </div>
 
-<!-- MONEY TREE TOGGLE BUTTON (hidden initially) -->
+<!-- MONEY TREE TOGGLE BUTTON -->
 <button id="moneyTreeToggle" class="money-tree-toggle" style="display: none;">💰</button>
 
-<!-- MONEY TREE (hidden initially) -->
+<!-- MONEY TREE -->
 <div class="money-tree" id="moneyTree" style="display: none;">
     <div class="jokers">
         <button class="joker-btn" id="joker5050" onclick="useFiftyFifty()"><span class="joker-text">50:50</span></button>
@@ -177,7 +175,7 @@
     <div class="money-item">1. 100 лв</div>
 </div>
 
-<!-- JOKER MODALS (hidden initially) -->
+<!-- MODALS -->
 <div id="phoneJokerModal" class="phone-modal" style="display: none;">
     <div class="phone-modal-content">
         <h2>📞 Помощ от приятел</h2>
@@ -196,6 +194,20 @@
 
 @section Scripts {
     <script src="~/js/translations.js"></script>
-    <script src="~/js/questions-data.js"></script>
+    <script src="/js/questions-data.js?v=4"></script>
     <script src="~/js/Game.js"></script>
+    <script>
+        (function() {
+            if (typeof QUESTIONS_DATA === 'undefined') {
+                alert('ERROR: questions-data.js did not load. Check the file path.');
+            } else {
+                console.log('QUESTIONS_DATA loaded with themes:', Object.keys(QUESTIONS_DATA));
+                // Optional: create a visible banner
+                var banner = document.createElement('div');
+                banner.style.cssText = 'background:lime; color:black; padding:5px; text-align:center; position:fixed; bottom:0; left:0; width:100%; z-index:9999; font-size:12px;';
+                banner.innerText = '✓ questions-data.js loaded (' + Object.keys(QUESTIONS_DATA).length + ' themes)';
+                document.body.appendChild(banner);
+            }
+        })();
+    </script>
 }
