@@ -1,3 +1,4 @@
+alert("questions-data.js loaded");
 const QUESTIONS_DATA = {
     "Стани Богат": {
         "bg": [
