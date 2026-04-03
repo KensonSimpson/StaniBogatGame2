@@ -26,6 +26,50 @@
     </div>
 </div>
 
+<!-- SETTINGS BUTTON & MODAL -->
+<button id="settingsButton" class="settings-button">⚙️</button>
+<div id="settingsModal" class="settings-modal" style="display: none;">
+    <div class="settings-content">
+        <h2>⚙️ Настройки</h2>
+        <div class="setting-group">
+            <h3>🔊 Звукови ефекти</h3>
+            <div class="volume-control">
+                <label for="sfxVolume">Сила на звуците:</label>
+                <input type="range" id="sfxVolume" min="0" max="100" value="100" class="volume-slider">
+                <span id="sfxVolumeValue">100%</span>
+            </div>
+        </div>
+        <div class="setting-group">
+            <h3>🎵 Музика</h3>
+            <div class="volume-control">
+                <label for="musicVolume">Сила на музиката:</label>
+                <input type="range" id="musicVolume" min="0" max="100" value="100" class="volume-slider">
+                <span id="musicVolumeValue">100%</span>
+            </div>
+            <div class="music-toggle">
+                <button id="toggleStartMusic" class="music-toggle-btn">🎵 Включи музика в началния екран</button>
+                <button id="toggleWheelMusic" class="music-toggle-btn">🎵 Включи музика в колелото</button>
+            </div>
+        </div>
+        <div class="setting-group">
+            <h3>🌍 Език / Language</h3>
+            <div class="language-buttons-vertical">
+                <button class="language-btn" data-lang="bg">🇧🇬 Български</button>
+                <button class="language-btn" data-lang="en">🇺🇸 English</button>
+                <button class="language-btn" data-lang="es">🇪🇸 Español</button>
+                <button class="language-btn" data-lang="de">🇩🇪 Deutsch</button>
+                <button class="language-btn" data-lang="zh">🇨🇳 中文</button>
+                <button class="language-btn" data-lang="ru">🇷🇺 Русский</button>
+                <button class="language-btn" data-lang="pt">🇵🇹 Português</button>
+            </div>
+        </div>
+        <div class="settings-buttons">
+            <button id="closeSettings" class="close-settings-btn">Затвори</button>
+            <button id="resetSettings" class="reset-settings-btn">Възстанови настройки по подразбиране</button>
+        </div>
+    </div>
+</div>
+
 <!-- TUTORIAL SCREEN -->
 <div id="tutorialScreen" class="tutorial-screen" style="display: none;">
     <div class="tutorial-content">
@@ -69,82 +113,6 @@
 </div>
 
 <!-- SPINNING WHEEL SCREEN -->
-<!-- Custom Wheel Controls -->
-<div class="custom-wheel-controls" style="margin-top: 20px;">
-<button id="settingsButton" class="settings-button">⚙️</button>
-<div id="settingsModal" class="settings-modal" style="display: none;">
-    <div class="settings-content">
-        <h2>⚙️ Настройки</h2>
-        <div class="setting-group">
-            <h3>🔊 Звукови ефекти</h3>
-            <div class="volume-control">
-                <label for="sfxVolume">Сила на звуците:</label>
-                <input type="range" id="sfxVolume" min="0" max="100" value="100" class="volume-slider">
-                <span id="sfxVolumeValue">100%</span>
-            </div>
-        </div>
-        <div class="setting-group">
-            <h3>🎵 Музика</h3>
-            <div class="volume-control">
-                <label for="musicVolume">Сила на музиката:</label>
-                <input type="range" id="musicVolume" min="0" max="100" value="100" class="volume-slider">
-                <span id="musicVolumeValue">100%</span>
-            </div>
-            <div class="music-toggle">
-                <button id="toggleStartMusic" class="music-toggle-btn">🎵 Включи музика в началния екран</button>
-                <button id="toggleWheelMusic" class="music-toggle-btn">🎵 Включи музика в колелото</button>
-            </div>
-        </div>
-        <div class="setting-group">
-            <h3>🌍 Език / Language</h3>
-            <div class="language-buttons-vertical">
-                <button class="language-btn" data-lang="bg">🇧🇬 Български</button>
-                <button class="language-btn" data-lang="en">🇺🇸 English</button>
-                <button class="language-btn" data-lang="es">🇪🇸 Español</button>
-                <button class="language-btn" data-lang="de">🇩🇪 Deutsch</button>
-                <button class="language-btn" data-lang="zh">🇨🇳 中文</button>
-                <button class="language-btn" data-lang="ru">🇷🇺 Русский</button>
-                <button class="language-btn" data-lang="pt">🇵🇹 Português</button>
-            </div>
-        </div>
-        <div class="settings-buttons">
-            <button id="closeSettings" class="close-settings-btn">Затвори</button>
-            <button id="resetSettings" class="reset-settings-btn">Възстанови настройки по подразбиране</button>
-        </div>
-    </div>
-</div>
-    <button id="customizeWheelButton" class="spin-button" style="background: var(--primary-blue);">⚙️ Настройки на колелото</button>
-    <button id="resetWheelButton" class="spin-button" style="background: #ff9900; display: none;">↺ Възстанови оригинално колело</button>
-</div>
-
-<!-- Custom Wheel Configuration Modal -->
-<div id="wheelConfigModal" class="settings-modal" style="display: none;">
-    <div class="settings-content" style="max-width: 500px;">
-        <h2>🎡 Настройки на колелото</h2>
-        <div class="setting-group">
-            <label>Брой сегменти (1‑100):</label>
-            <input type="number" id="segmentCount" min="1" max="100" value="6" style="width:100%; padding:8px; margin-top:5px;">
-        </div>
-        <div class="setting-group">
-            <label>Имена на сегментите (разделени със запетая):</label>
-            <textarea id="segmentNames" rows="3" placeholder="Пример: Алекс, Мария, Иван, София, Петър, Ема" style="width:100%;"></textarea>
-            <small>Ако оставите празно, ще се използват номера.</small>
-        </div>
-        <div class="setting-group">
-            <label>Цветове на сегментите (разделени със запетая):</label>
-            <input type="text" id="segmentColors" placeholder="#FF6B6B, #4F90FF, #4CAF50, #FFD700" style="width:100%; padding:8px;">
-            <small>Може да са hex, rgb, или имена. Ако оставите празно, ще се генерират автоматично.</small>
-        </div>
-        <div class="setting-group">
-            <label>Продължителност на въртенето (секунди, 0.5‑100):</label>
-            <input type="number" id="spinDurationSec" min="0.5" max="100" step="0.5" value="4" style="width:100%; padding:8px;">
-        </div>
-        <div class="settings-buttons">
-            <button id="saveWheelConfig" class="close-settings-btn">Запази и приложи</button>
-            <button id="cancelWheelConfig" class="reset-settings-btn">Откажи</button>
-        </div>
-    </div>
-</div>
 <div id="spinningWheelScreen" class="spinning-wheel-screen" style="display: none;">
     <h2 class="spinning-wheel-title">🎡 Колело на късмета</h2>
     <p class="spinning-wheel-text">Завърти колелото, за да избереш участник!</p>
@@ -164,6 +132,41 @@
     </div>
     <div class="back-button-container">
         <button id="backFromWheelButton" class="back-button">← Назад към началния екран</button>
+    </div>
+
+    <!-- Custom Wheel Controls (only visible inside this screen) -->
+    <div class="custom-wheel-controls" style="margin-top: 20px;">
+        <button id="customizeWheelButton" class="spin-button" style="background: var(--primary-blue);">⚙️ Настройки на колелото</button>
+        <button id="resetWheelButton" class="spin-button" style="background: #ff9900; display: none;">↺ Възстанови оригинално колело</button>
+    </div>
+
+    <!-- Custom Wheel Configuration Modal -->
+    <div id="wheelConfigModal" class="settings-modal" style="display: none;">
+        <div class="settings-content" style="max-width: 500px;">
+            <h2>🎡 Настройки на колелото</h2>
+            <div class="setting-group">
+                <label>Брой сегменти (1‑100):</label>
+                <input type="number" id="segmentCount" min="1" max="100" value="6" style="width:100%; padding:8px; margin-top:5px;">
+            </div>
+            <div class="setting-group">
+                <label>Имена на сегментите (разделени със запетая):</label>
+                <textarea id="segmentNames" rows="3" placeholder="Пример: Алекс, Мария, Иван, София, Петър, Ема" style="width:100%;"></textarea>
+                <small>Ако оставите празно, ще се използват номера.</small>
+            </div>
+            <div class="setting-group">
+                <label>Цветове на сегментите (разделени със запетая):</label>
+                <input type="text" id="segmentColors" placeholder="#FF6B6B, #4F90FF, #4CAF50, #FFD700" style="width:100%; padding:8px;">
+                <small>Може да са hex, rgb, или имена. Ако оставите празно, ще се генерират автоматично.</small>
+            </div>
+            <div class="setting-group">
+                <label>Продължителност на въртенето (секунди, 0.5‑100):</label>
+                <input type="number" id="spinDurationSec" min="0.5" max="100" step="0.5" value="4" style="width:100%; padding:8px;">
+            </div>
+            <div class="settings-buttons">
+                <button id="saveWheelConfig" class="close-settings-btn">Запази и приложи</button>
+                <button id="cancelWheelConfig" class="reset-settings-btn">Откажи</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -234,7 +237,6 @@
                 alert('ERROR: questions-data.js did not load. Check the file path.');
             } else {
                 console.log('QUESTIONS_DATA loaded with themes:', Object.keys(QUESTIONS_DATA));
-                // Optional: create a visible banner
                 var banner = document.createElement('div');
                 banner.style.cssText = 'background:lime; color:black; padding:5px; text-align:center; position:fixed; bottom:0; left:0; width:100%; z-index:9999; font-size:12px;';
                 banner.innerText = '✓ questions-data.js loaded (' + Object.keys(QUESTIONS_DATA).length + ' themes)';
