@@ -94,6 +94,54 @@ const QUESTIONS_DATA = {
             { question: "Какво се случва, когато убиеш Ender Dragon?", answers: ["Спечеляваш играта", "Отваря се портал към End City", "Получаваш елитра", "Всичко изброено"], correct: 3 }
         ]
     }
+};   // <-- semicolon HERE (after the closing brace of the object)
+
+const PRIZES = [
+    "100 BGN", "200 BGN", "300 BGN", "400 BGN", "500 BGN",
+    "1,000 BGN", "1,500 BGN", "2,000 BGN", "3,000 BGN", "5,000 BGN",
+    "10,000 BGN", "20,000 BGN", "30,000 BGN", "50,000 BGN", "100,000 BGN"
+];
+
+function openQuestionEditor() {
+    const editor = `
+    <div class="question-editor">
+        <h3>Добави въпрос</h3>
+        <select id="themeSelect">
+            <option value="Стани Богат">Стани Богат</option>
+            <option value="Руски език">Руски език</option>
+            <option value="Математика">Математика</option>
+            <option value="Общи знания">Общи знания</option>
+            <option value="Minecraft">Minecraft</option>
+        </select>
+        <textarea id="questionText" placeholder="Въпрос..."></textarea>
+        <input type="text" id="answer1" placeholder="Отговор 1">
+        <input type="text" id="answer2" placeholder="Отговор 2">
+        <input type="text" id="answer3" placeholder="Отговор 3">
+        <input type="text" id="answer4" placeholder="Отговор 4">
+        <select id="correctAnswer">
+            <option value="0">Отговор 1</option>
+            <option value="1">Отговор 2</option>
+            <option value="2">Отговор 3</option>
+            <option value="3">Отговор 4</option>
+        </select>
+        <button onclick="saveQuestion()">Запази</button>
+    </div>
+    `;
+    // You can implement saveQuestion() to store new questions
+}            { question: "Какво се случва, когато спиш в Nether?", answers: ["Спиш нормално", "Експлодираш", "Телепортираш се", "Събуждаш се с ефект"], correct: 1 },
+            { question: "Коя е най-силната броня в Minecraft?", answers: ["Кожена", "Желязна", "Диамантена", "Неферитена"], correct: 3 },
+            { question: "Как се казва първият бос, който повечето играчи срещат?", answers: ["Wither", "Elder Guardian", "Ender Dragon", "Ravager"], correct: 2 },
+            { question: "Какво е необходимо за създаване на портал към Nether?", answers: ["Диаманти и злато", "Обсидиан и запалка", "Камък и дърво", "Желязо и кремък"], correct: 1 },
+            { question: "Коя е най-бързата превозно средство в Minecraft?", answers: ["Кон", "Лодка", "Мина", "Крила на елитра"], correct: 3 },
+            { question: "Какво се случва, ако изядеш златен ябълка?", answers: ["Получаваш ефекти", "Умираш", "Телепортираш се", "Създаваш взрив"], correct: 0 },
+            { question: "Как се казва подводната структура, пазена от Elder Guardian?", answers: ["Океански храм", "Подводна крепост", "Корабен останки", "Риф"], correct: 0 },
+            { question: "Коя е най-рядката биома в Minecraft?", answers: ["Пустиня", "Джунгла", "Леден шип", "Гъбена поляна"], correct: 3 },
+            { question: "Какво прави Totem of Undying?", answers: ["Дава безсмъртие", "Телепортира те", "Изцелява те", "Увеличава силата"], correct: 0 },
+            { question: "Как се казва мобът, който хвърля светкавици?", answers: ["Witch", "Evoker", "Phantom", "Lightning Rod"], correct: 1 },
+            { question: "Колко е максималното ниво на очарование (enchantment)?", answers: ["30", "40", "50", "60"], correct: 0 },
+            { question: "Какво се случва, когато убиеш Ender Dragon?", answers: ["Спечеляваш играта", "Отваря се портал към End City", "Получаваш елитра", "Всичко изброено"], correct: 3 }
+        ]
+    }
 };
 
 // Prizes remain the same for all themes (used from TRANSLATIONS)
