@@ -552,16 +552,55 @@ function initializeStartMenu() {
 }
 
 // ============================================
-// SPINNING WHEEL (full original)
 // ============================================
+// CUSTOM WHEEL CONFIGURATION (stored in localStorage)
 // ============================================
-// SPINNING WHEEL (customizable)
+let customWheelConfig = null;
+
+function loadCustomWheelConfig() {
+    try {
+        const saved = localStorage.getItem('staniBogatCustomWheel');
+        if (saved) customWheelConfig = JSON.parse(saved);
+    } catch(e) { console.error("Failed to load custom wheel config", e); }
+}
+
+function saveCustomWheelConfig(config) {
+    try {
+        localStorage.setItem('staniBogatCustomWheel', JSON.stringify(config));
+        customWheelConfig = config;
+    } catch(e) { console.error("Failed to save custom wheel config", e); }
+}
+
+function resetToOriginalWheel() {
+    localStorage.removeItem('staniBogatCustomWheel');
+    customWheelConfig = null;
+    createWheelNumbers();  // rebuild original wheel
+    const resetBtn = document.getElementById('resetWheelButton');
+    if (resetBtn) resetBtn.style.display = 'none';
+}
+
+// ============================================
+// SPINNING WHEEL (with custom support)
 // ============================================
 function initializeSpinningWheel() {
     const spinButton = document.getElementById('spinButton');
     const spinAgain = document.getElementById('spinAgainButton');
     const resultModal = document.getElementById('resultModal');
-    createWheelNumbers(); // uses custom config if defined
+    const customizeBtn = document.getElementById('customizeWheelButton');
+    const resetBtn = document.getElementById('resetWheelButton');
+    const configModal = document.getElementById('wheelConfigModal');
+    const saveConfigBtn = document.getElementById('saveWheelConfig');
+    const cancelConfigBtn = document.getElementById('cancelWheelConfig');
+
+    loadCustomWheelConfig();
+    createWheelNumbers(); // builds either custom or original
+
+    if (customWheelConfig) {
+        if (resetBtn) resetBtn.style.display = 'inline-block';
+    } else {
+        if (resetBtn) resetBtn.style.display = 'none';
+    }
+
     if (spinButton) {
         spinButton.addEventListener('click', () => { if (!gameState.isSpinning) spinWheel(); });
     }
@@ -572,66 +611,150 @@ function initializeSpinningWheel() {
             gameState.isSpinning = false;
         });
     }
+
+    // Customize button: open modal with current config values
+    if (customizeBtn) {
+        customizeBtn.addEventListener('click', () => {
+            // Populate modal with existing values
+            const segmentCountInput = document.getElementById('segmentCount');
+            const namesTextarea = document.getElementById('segmentNames');
+            const colorsInput = document.getElementById('segmentColors');
+            const durationInput = document.getElementById('spinDurationSec');
+
+            if (customWheelConfig) {
+                segmentCountInput.value = customWheelConfig.segmentCount || 6;
+                namesTextarea.value = (customWheelConfig.texts || []).join(', ');
+                colorsInput.value = (customWheelConfig.colors || []).join(', ');
+                durationInput.value = (customWheelConfig.spinDurationMs / 1000) || 4;
+            } else {
+                segmentCountInput.value = 6;
+                namesTextarea.value = '';
+                colorsInput.value = '';
+                durationInput.value = 4;
+            }
+            configModal.style.display = 'flex';
+        });
+    }
+
+    // Save custom config
+    if (saveConfigBtn) {
+        saveConfigBtn.addEventListener('click', () => {
+            let segmentCount = parseInt(document.getElementById('segmentCount').value, 10);
+            if (isNaN(segmentCount) || segmentCount < 1) segmentCount = 1;
+            if (segmentCount > 100) segmentCount = 100;
+
+            let namesRaw = document.getElementById('segmentNames').value;
+            let texts = namesRaw ? namesRaw.split(',').map(s => s.trim()) : [];
+            if (texts.length !== segmentCount) {
+                // Auto‑generate names if count mismatches
+                texts = [];
+                for (let i = 1; i <= segmentCount; i++) texts.push(`Сегмент ${i}`);
+            }
+
+            let colorsRaw = document.getElementById('segmentColors').value;
+            let colors = colorsRaw ? colorsRaw.split(',').map(s => s.trim()) : [];
+            if (colors.length !== segmentCount) {
+                // Generate rainbow-like colors
+                colors = [];
+                for (let i = 0; i < segmentCount; i++) {
+                    const hue = (i * 360 / segmentCount) % 360;
+                    colors.push(`hsl(${hue}, 70%, 60%)`);
+                }
+            }
+
+            let durationSec = parseFloat(document.getElementById('spinDurationSec').value);
+            if (isNaN(durationSec)) durationSec = 4;
+            if (durationSec < 0.5) durationSec = 0.5;
+            if (durationSec > 100) durationSec = 100;
+            const spinDurationMs = durationSec * 1000;
+
+            const newConfig = {
+                segmentCount: segmentCount,
+                texts: texts,
+                colors: colors,
+                spinDurationMs: spinDurationMs,
+                minRotations: 3,
+                maxRotations: 7,
+                easing: "cubic-bezier(0.2, 0.8, 0.3, 1)"
+            };
+            saveCustomWheelConfig(newConfig);
+            createWheelNumbers(); // rebuild wheel
+            configModal.style.display = 'none';
+            const resetBtn = document.getElementById('resetWheelButton');
+            if (resetBtn) resetBtn.style.display = 'inline-block';
+        });
+    }
+
+    if (cancelConfigBtn) {
+        cancelConfigBtn.addEventListener('click', () => {
+            configModal.style.display = 'none';
+        });
+    }
+
+    // Reset to original wheel
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            resetToOriginalWheel();
+            configModal.style.display = 'none';
+        });
+    }
+
+    // Close modal when clicking outside
+    if (configModal) {
+        configModal.addEventListener('click', (e) => {
+            if (e.target === configModal) configModal.style.display = 'none';
+        });
+    }
 }
 
 function createWheelNumbers() {
     const wheel = document.getElementById('wheel');
     if (!wheel) return;
 
-    // Determine configuration
-    let segmentCount, colors, texts;
-    if (CUSTOM_WHEEL_CONFIG && CUSTOM_WHEEL_CONFIG.segmentCount) {
-        segmentCount = CUSTOM_WHEEL_CONFIG.segmentCount;
-        colors = CUSTOM_WHEEL_CONFIG.colors;
-        texts = CUSTOM_WHEEL_CONFIG.texts;
-        // Validate length
-        if (colors.length !== segmentCount || texts.length !== segmentCount) {
-            console.error("Custom wheel config: colors and texts length must equal segmentCount. Falling back to original.");
-            segmentCount = 23;
-            colors = null;
-            texts = null;
+    // Determine config: custom or original
+    let segmentCount = 23;
+    let texts = null;
+    let colors = null;
+    let spinDurationMs = 4000;
+
+    if (customWheelConfig && customWheelConfig.segmentCount) {
+        segmentCount = customWheelConfig.segmentCount;
+        texts = customWheelConfig.texts;
+        colors = customWheelConfig.colors;
+        spinDurationMs = customWheelConfig.spinDurationMs || 4000;
+    } else {
+        // Original hardcoded texts (classmate names) – only first 23 used
+        texts = CLASSMATE_NAMES.slice(0, 23);
+        // Original colors (simplified repeating)
+        const defaultColors = ["#FF6B6B", "#4F90FF", "#4CAF50", "#FFD700"];
+        colors = [];
+        for (let i = 0; i < segmentCount; i++) {
+            colors.push(defaultColors[i % defaultColors.length]);
         }
-    }
-    if (!segmentCount) {
-        segmentCount = 23;
     }
 
     const segmentAngle = 360 / segmentCount;
-    // Remove existing numbers and any old wheel content (but keep the wheel element)
+    // Clear existing numbers
     const existingNumbers = wheel.querySelectorAll('.segment-number');
     existingNumbers.forEach(n => n.remove());
-    // Remove any existing conic-gradient background (we will set it dynamically)
-    wheel.style.background = "";
 
-    // Build conic gradient colors
+    // Build conic gradient
     let gradient = "conic-gradient(";
-    if (colors) {
-        for (let i = 0; i < segmentCount; i++) {
-            const start = i * segmentAngle;
-            const end = (i + 1) * segmentAngle;
-            gradient += `${colors[i]} ${start}deg ${end}deg`;
-            if (i < segmentCount - 1) gradient += ", ";
-        }
-    } else {
-        // Original hardcoded colors (simplified for 23 segments)
-        const defaultColors = ["#FF6B6B", "#4F90FF", "#4CAF50", "#FFD700"];
-        for (let i = 0; i < segmentCount; i++) {
-            const col = defaultColors[i % defaultColors.length];
-            const start = i * segmentAngle;
-            const end = (i + 1) * segmentAngle;
-            gradient += `${col} ${start}deg ${end}deg`;
-            if (i < segmentCount - 1) gradient += ", ";
-        }
+    for (let i = 0; i < segmentCount; i++) {
+        const start = i * segmentAngle;
+        const end = (i + 1) * segmentAngle;
+        gradient += `${colors[i]} ${start}deg ${end}deg`;
+        if (i < segmentCount - 1) gradient += ", ";
     }
     gradient += ")";
     wheel.style.background = gradient;
 
-    // Add text numbers
+    // Add text labels
     const radius = 150;
     for (let i = 0; i < segmentCount; i++) {
         const div = document.createElement('div');
         div.className = 'segment-number';
-        div.textContent = texts ? texts[i] : (i + 1).toString();
+        div.textContent = texts[i] || `#${i+1}`;
         const angle = (i * segmentAngle) + (segmentAngle / 2);
         const x = Math.cos((angle - 90) * Math.PI / 180) * radius;
         const y = Math.sin((angle - 90) * Math.PI / 180) * radius;
@@ -659,11 +782,25 @@ function spinWheel() {
     if (spinButton) spinButton.disabled = true;
     if (pointer) pointer.classList.add('spinning');
 
-    let segmentCount = CUSTOM_WHEEL_CONFIG && CUSTOM_WHEEL_CONFIG.segmentCount ? CUSTOM_WHEEL_CONFIG.segmentCount : 23;
-    let minRot = CUSTOM_WHEEL_CONFIG && CUSTOM_WHEEL_CONFIG.minRotations ? CUSTOM_WHEEL_CONFIG.minRotations : 3;
-    let maxRot = CUSTOM_WHEEL_CONFIG && CUSTOM_WHEEL_CONFIG.maxRotations ? CUSTOM_WHEEL_CONFIG.maxRotations : 7;
-    let duration = CUSTOM_WHEEL_CONFIG && CUSTOM_WHEEL_CONFIG.spinDuration ? CUSTOM_WHEEL_CONFIG.spinDuration : 4000;
-    let easing = CUSTOM_WHEEL_CONFIG && CUSTOM_WHEEL_CONFIG.easing ? CUSTOM_WHEEL_CONFIG.easing : "cubic-bezier(0.2, 0.8, 0.3, 1)";
+    let segmentCount = 23;
+    let texts = null;
+    let minRot = 3;
+    let maxRot = 7;
+    let duration = 4000;
+    let easing = "cubic-bezier(0.2, 0.8, 0.3, 1)";
+
+    if (customWheelConfig && customWheelConfig.segmentCount) {
+        segmentCount = customWheelConfig.segmentCount;
+        texts = customWheelConfig.texts;
+        minRot = customWheelConfig.minRotations || 3;
+        maxRot = customWheelConfig.maxRotations || 7;
+        duration = customWheelConfig.spinDurationMs || 4000;
+        easing = customWheelConfig.easing || "cubic-bezier(0.2, 0.8, 0.3, 1)";
+    } else {
+        // Original uses CLASSMATE_NAMES
+        texts = CLASSMATE_NAMES;
+        segmentCount = 23;
+    }
 
     let targetSegment;
     if (wheel) {
@@ -684,17 +821,32 @@ function spinWheel() {
     setTimeout(() => {
         if (pointer) pointer.classList.remove('spinning');
         let winner;
-        if (CUSTOM_WHEEL_CONFIG && CUSTOM_WHEEL_CONFIG.texts && CUSTOM_WHEEL_CONFIG.texts[targetSegment]) {
-            winner = CUSTOM_WHEEL_CONFIG.texts[targetSegment];
+        if (texts && texts[targetSegment]) {
+            winner = texts[targetSegment];
         } else {
-            // Use original classmate names (fallback)
-            winner = CLASSMATE_NAMES[targetSegment] || `Segment ${targetSegment + 1}`;
+            winner = `Сегмент ${targetSegment + 1}`;
         }
         if (selectedName) selectedName.textContent = winner;
         if (resultModal) resultModal.style.display = 'flex';
     }, duration);
 }
 
+function resetSpinningWheel() {
+    const wheel = document.getElementById('wheel');
+    const resultModal = document.getElementById('resultModal');
+    const spinButton = document.getElementById('spinButton');
+    const pointer = document.querySelector('.wheel-pointer');
+    if (wheel) { wheel.style.transition = 'none'; wheel.style.transform = 'rotate(0deg)'; }
+    if (resultModal) resultModal.style.display = 'none';
+    if (spinButton) spinButton.disabled = false;
+    gameState.isSpinning = false;
+    if (pointer) pointer.classList.remove('spinning');
+    if (wheel) { void wheel.offsetWidth; wheel.style.transition = `transform ${customWheelConfig?.spinDurationMs || 4000}ms ${customWheelConfig?.easing || "cubic-bezier(0.2,0.8,0.3,1)"}`; }
+}
+// ============================================
+// ============================================
+// SPINNING WHEEL (customizable)
+// ===========================================
 // ============================================
 // GAME QUESTIONS (theme‑aware)
 // ============================================
