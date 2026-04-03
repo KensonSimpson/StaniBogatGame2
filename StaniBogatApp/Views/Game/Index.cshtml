@@ -26,50 +26,6 @@
     </div>
 </div>
 
-<!-- SETTINGS BUTTON & MODAL -->
-<button id="settingsButton" class="settings-button">⚙️</button>
-<div id="settingsModal" class="settings-modal" style="display: none;">
-    <div class="settings-content">
-        <h2>⚙️ Настройки</h2>
-        <div class="setting-group">
-            <h3>🔊 Звукови ефекти</h3>
-            <div class="volume-control">
-                <label for="sfxVolume">Сила на звуците:</label>
-                <input type="range" id="sfxVolume" min="0" max="100" value="100" class="volume-slider">
-                <span id="sfxVolumeValue">100%</span>
-            </div>
-        </div>
-        <div class="setting-group">
-            <h3>🎵 Музика</h3>
-            <div class="volume-control">
-                <label for="musicVolume">Сила на музиката:</label>
-                <input type="range" id="musicVolume" min="0" max="100" value="100" class="volume-slider">
-                <span id="musicVolumeValue">100%</span>
-            </div>
-            <div class="music-toggle">
-                <button id="toggleStartMusic" class="music-toggle-btn">🎵 Включи музика в началния екран</button>
-                <button id="toggleWheelMusic" class="music-toggle-btn">🎵 Включи музика в колелото</button>
-            </div>
-        </div>
-        <div class="setting-group">
-            <h3>🌍 Език / Language</h3>
-            <div class="language-buttons-vertical">
-                <button class="language-btn" data-lang="bg">🇧🇬 Български</button>
-                <button class="language-btn" data-lang="en">🇺🇸 English</button>
-                <button class="language-btn" data-lang="es">🇪🇸 Español</button>
-                <button class="language-btn" data-lang="de">🇩🇪 Deutsch</button>
-                <button class="language-btn" data-lang="zh">🇨🇳 中文</button>
-                <button class="language-btn" data-lang="ru">🇷🇺 Русский</button>
-                <button class="language-btn" data-lang="pt">🇵🇹 Português</button>
-            </div>
-        </div>
-        <div class="settings-buttons">
-            <button id="closeSettings" class="close-settings-btn">Затвори</button>
-            <button id="resetSettings" class="reset-settings-btn">Възстанови настройки по подразбиране</button>
-        </div>
-    </div>
-</div>
-
 <!-- TUTORIAL SCREEN -->
 <div id="tutorialScreen" class="tutorial-screen" style="display: none;">
     <div class="tutorial-content">
@@ -115,6 +71,48 @@
 <!-- SPINNING WHEEL SCREEN -->
 <!-- Custom Wheel Controls -->
 <div class="custom-wheel-controls" style="margin-top: 20px;">
+<button id="settingsButton" class="settings-button">⚙️</button>
+<div id="settingsModal" class="settings-modal" style="display: none;">
+    <div class="settings-content">
+        <h2>⚙️ Настройки</h2>
+        <div class="setting-group">
+            <h3>🔊 Звукови ефекти</h3>
+            <div class="volume-control">
+                <label for="sfxVolume">Сила на звуците:</label>
+                <input type="range" id="sfxVolume" min="0" max="100" value="100" class="volume-slider">
+                <span id="sfxVolumeValue">100%</span>
+            </div>
+        </div>
+        <div class="setting-group">
+            <h3>🎵 Музика</h3>
+            <div class="volume-control">
+                <label for="musicVolume">Сила на музиката:</label>
+                <input type="range" id="musicVolume" min="0" max="100" value="100" class="volume-slider">
+                <span id="musicVolumeValue">100%</span>
+            </div>
+            <div class="music-toggle">
+                <button id="toggleStartMusic" class="music-toggle-btn">🎵 Включи музика в началния екран</button>
+                <button id="toggleWheelMusic" class="music-toggle-btn">🎵 Включи музика в колелото</button>
+            </div>
+        </div>
+        <div class="setting-group">
+            <h3>🌍 Език / Language</h3>
+            <div class="language-buttons-vertical">
+                <button class="language-btn" data-lang="bg">🇧🇬 Български</button>
+                <button class="language-btn" data-lang="en">🇺🇸 English</button>
+                <button class="language-btn" data-lang="es">🇪🇸 Español</button>
+                <button class="language-btn" data-lang="de">🇩🇪 Deutsch</button>
+                <button class="language-btn" data-lang="zh">🇨🇳 中文</button>
+                <button class="language-btn" data-lang="ru">🇷🇺 Русский</button>
+                <button class="language-btn" data-lang="pt">🇵🇹 Português</button>
+            </div>
+        </div>
+        <div class="settings-buttons">
+            <button id="closeSettings" class="close-settings-btn">Затвори</button>
+            <button id="resetSettings" class="reset-settings-btn">Възстанови настройки по подразбиране</button>
+        </div>
+    </div>
+</div>
     <button id="customizeWheelButton" class="spin-button" style="background: var(--primary-blue);">⚙️ Настройки на колелото</button>
     <button id="resetWheelButton" class="spin-button" style="background: #ff9900; display: none;">↺ Възстанови оригинално колело</button>
 </div>
