@@ -113,6 +113,40 @@
 </div>
 
 <!-- SPINNING WHEEL SCREEN -->
+<!-- Custom Wheel Controls -->
+<div class="custom-wheel-controls" style="margin-top: 20px;">
+    <button id="customizeWheelButton" class="spin-button" style="background: var(--primary-blue);">⚙️ Настройки на колелото</button>
+    <button id="resetWheelButton" class="spin-button" style="background: #ff9900; display: none;">↺ Възстанови оригинално колело</button>
+</div>
+
+<!-- Custom Wheel Configuration Modal -->
+<div id="wheelConfigModal" class="settings-modal" style="display: none;">
+    <div class="settings-content" style="max-width: 500px;">
+        <h2>🎡 Настройки на колелото</h2>
+        <div class="setting-group">
+            <label>Брой сегменти (1‑100):</label>
+            <input type="number" id="segmentCount" min="1" max="100" value="6" style="width:100%; padding:8px; margin-top:5px;">
+        </div>
+        <div class="setting-group">
+            <label>Имена на сегментите (разделени със запетая):</label>
+            <textarea id="segmentNames" rows="3" placeholder="Пример: Алекс, Мария, Иван, София, Петър, Ема" style="width:100%;"></textarea>
+            <small>Ако оставите празно, ще се използват номера.</small>
+        </div>
+        <div class="setting-group">
+            <label>Цветове на сегментите (разделени със запетая):</label>
+            <input type="text" id="segmentColors" placeholder="#FF6B6B, #4F90FF, #4CAF50, #FFD700" style="width:100%; padding:8px;">
+            <small>Може да са hex, rgb, или имена. Ако оставите празно, ще се генерират автоматично.</small>
+        </div>
+        <div class="setting-group">
+            <label>Продължителност на въртенето (секунди, 0.5‑100):</label>
+            <input type="number" id="spinDurationSec" min="0.5" max="100" step="0.5" value="4" style="width:100%; padding:8px;">
+        </div>
+        <div class="settings-buttons">
+            <button id="saveWheelConfig" class="close-settings-btn">Запази и приложи</button>
+            <button id="cancelWheelConfig" class="reset-settings-btn">Откажи</button>
+        </div>
+    </div>
+</div>
 <div id="spinningWheelScreen" class="spinning-wheel-screen" style="display: none;">
     <h2 class="spinning-wheel-title">🎡 Колело на късмета</h2>
     <p class="spinning-wheel-text">Завърти колелото, за да избереш участник!</p>
