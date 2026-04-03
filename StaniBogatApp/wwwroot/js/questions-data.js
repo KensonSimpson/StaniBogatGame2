@@ -63,7 +63,28 @@ const QUESTIONS_DATA = {
             { question: "Колко е 0.2 × 0.3?", answers: ["0.06", "0.6", "0.006", "6"], correct: 0 },
             { question: "Ако a = 4 и b = 3, колко е a² + b²?", answers: ["7", "12", "25", "49"], correct: 2 }
         ]
-    },
+    }
+    "Super Mario": {
+        "bg": [
+            { question: "Как се казва главният герой в Super Mario?", answers: ["Луиджи", "Марио", "Йоши", "Боузер"], correct: 1 },
+            { question: "Как се казва братът на Марио?", answers: ["Варио", "Луиджи", "Валуиджи", "Туарио"], correct: 1 },
+            { question: "Кой е основният враг на Марио?", answers: ["Купa Боузер", "Вълк", "Крал Бобомб", "Трубач"], correct: 0 },
+            { question: "Какво дава на Марио способността да лети?", answers: ["Супер гъба", "Огнено цвете", "Звезда", "Перо"], correct: 3 },
+            { question: "Как се казва принцесата, която Боузер често отвлича?", answers: ["Розалина", "Дейзи", "Пийч", "Полина"], correct: 2 },
+            { question: "Какъв ефект има Super Star?", answers: ["Увеличава размера", "Дава неуязвимост", "Хвърля огнени топки", "Удължава времето"], correct: 1 },
+            { question: "Кой е динозавърът, който помага на Марио?", answers: ["Спайк", "Йоши", "Купa", "Туарио"], correct: 1 },
+            { question: "В коя игра за пръв път се появява Йоши?", answers: ["Super Mario World", "Super Mario 64", "Super Mario Bros", "Super Mario Sunshine"], correct: 0 },
+            { question: "Как се казва зъл двойник на Марио?", answers: ["Варио", "Валуиджи", "Шадоу Марио", "Метал Марио"], correct: 0 },
+            { question: "Какво се случва, когато Марио вземе Fire Flower?", answers: ["Лети", "Плува по-бързо", "Хвърля огнени топки", "Става неуязвим"], correct: 2 },
+            { question: "Коя е най-известната песен от Super Mario Bros?", answers: ["Underground", "Underwater", "Overworld", "Castle"], correct: 2 },
+            { question: "Какъв вид същество е Goomba?", answers: ["Гъба", "Костенурка", "Растение", "Призрак"], correct: 0 },
+            { question: "Как се казва стадионът за бой с босове в Super Mario 64?", answers: ["Peach's Castle", "Bob-omb Battlefield", "Bowser's Castle", "Dark World"], correct: 0 },
+            { question: "Каква е целта на Марио в повечето игри?", answers: ["Да събере монети", "Да спаси принцеса Пийч", "Да победи Боузер", "Да завърши нивата"], correct: 1 },
+            { question: "Коя игра въвежда FLUDD (водно оръжие)?", answers: ["Super Mario Sunshine", "Super Mario Galaxy", "Super Mario Odyssey", "Super Mario 64"], correct: 0 }
+        ]
+    }
+    // ========== END OF SUPER MARIO THEME ==========
+};   // <-- this closing brace and semicolon already exists
     "Общи знания": {
         "bg": [
             { question: "Коя е най-високата планина в света?", answers: ["Килиманджаро", "Еверест", "Монблан", "Елбрус"], correct: 1 },
