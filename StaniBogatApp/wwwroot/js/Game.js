@@ -554,11 +554,14 @@ function initializeStartMenu() {
 // ============================================
 // SPINNING WHEEL (full original)
 // ============================================
+// ============================================
+// SPINNING WHEEL (customizable)
+// ============================================
 function initializeSpinningWheel() {
     const spinButton = document.getElementById('spinButton');
     const spinAgain = document.getElementById('spinAgainButton');
     const resultModal = document.getElementById('resultModal');
-    createWheelNumbers();
+    createWheelNumbers(); // uses custom config if defined
     if (spinButton) {
         spinButton.addEventListener('click', () => { if (!gameState.isSpinning) spinWheel(); });
     }
@@ -570,19 +573,66 @@ function initializeSpinningWheel() {
         });
     }
 }
+
 function createWheelNumbers() {
     const wheel = document.getElementById('wheel');
     if (!wheel) return;
-    const segmentAngle = 360 / GAME_CONFIG.spinningWheel.segmentCount;
-    const existing = wheel.querySelectorAll('.segment-number');
-    existing.forEach(n => n.remove());
-    const numbers = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25];
-    for (let i = 0; i < GAME_CONFIG.spinningWheel.segmentCount; i++) {
+
+    // Determine configuration
+    let segmentCount, colors, texts;
+    if (CUSTOM_WHEEL_CONFIG && CUSTOM_WHEEL_CONFIG.segmentCount) {
+        segmentCount = CUSTOM_WHEEL_CONFIG.segmentCount;
+        colors = CUSTOM_WHEEL_CONFIG.colors;
+        texts = CUSTOM_WHEEL_CONFIG.texts;
+        // Validate length
+        if (colors.length !== segmentCount || texts.length !== segmentCount) {
+            console.error("Custom wheel config: colors and texts length must equal segmentCount. Falling back to original.");
+            segmentCount = 23;
+            colors = null;
+            texts = null;
+        }
+    }
+    if (!segmentCount) {
+        segmentCount = 23;
+    }
+
+    const segmentAngle = 360 / segmentCount;
+    // Remove existing numbers and any old wheel content (but keep the wheel element)
+    const existingNumbers = wheel.querySelectorAll('.segment-number');
+    existingNumbers.forEach(n => n.remove());
+    // Remove any existing conic-gradient background (we will set it dynamically)
+    wheel.style.background = "";
+
+    // Build conic gradient colors
+    let gradient = "conic-gradient(";
+    if (colors) {
+        for (let i = 0; i < segmentCount; i++) {
+            const start = i * segmentAngle;
+            const end = (i + 1) * segmentAngle;
+            gradient += `${colors[i]} ${start}deg ${end}deg`;
+            if (i < segmentCount - 1) gradient += ", ";
+        }
+    } else {
+        // Original hardcoded colors (simplified for 23 segments)
+        const defaultColors = ["#FF6B6B", "#4F90FF", "#4CAF50", "#FFD700"];
+        for (let i = 0; i < segmentCount; i++) {
+            const col = defaultColors[i % defaultColors.length];
+            const start = i * segmentAngle;
+            const end = (i + 1) * segmentAngle;
+            gradient += `${col} ${start}deg ${end}deg`;
+            if (i < segmentCount - 1) gradient += ", ";
+        }
+    }
+    gradient += ")";
+    wheel.style.background = gradient;
+
+    // Add text numbers
+    const radius = 150;
+    for (let i = 0; i < segmentCount; i++) {
         const div = document.createElement('div');
         div.className = 'segment-number';
-        div.textContent = numbers[i];
+        div.textContent = texts ? texts[i] : (i + 1).toString();
         const angle = (i * segmentAngle) + (segmentAngle / 2);
-        const radius = 150;
         const x = Math.cos((angle - 90) * Math.PI / 180) * radius;
         const y = Math.sin((angle - 90) * Math.PI / 180) * radius;
         div.style.position = 'absolute';
@@ -597,6 +647,7 @@ function createWheelNumbers() {
         wheel.appendChild(div);
     }
 }
+
 function spinWheel() {
     if (gameState.isSpinning) return;
     gameState.isSpinning = true;
@@ -607,38 +658,41 @@ function spinWheel() {
     const pointer = document.querySelector('.wheel-pointer');
     if (spinButton) spinButton.disabled = true;
     if (pointer) pointer.classList.add('spinning');
+
+    let segmentCount = CUSTOM_WHEEL_CONFIG && CUSTOM_WHEEL_CONFIG.segmentCount ? CUSTOM_WHEEL_CONFIG.segmentCount : 23;
+    let minRot = CUSTOM_WHEEL_CONFIG && CUSTOM_WHEEL_CONFIG.minRotations ? CUSTOM_WHEEL_CONFIG.minRotations : 3;
+    let maxRot = CUSTOM_WHEEL_CONFIG && CUSTOM_WHEEL_CONFIG.maxRotations ? CUSTOM_WHEEL_CONFIG.maxRotations : 7;
+    let duration = CUSTOM_WHEEL_CONFIG && CUSTOM_WHEEL_CONFIG.spinDuration ? CUSTOM_WHEEL_CONFIG.spinDuration : 4000;
+    let easing = CUSTOM_WHEEL_CONFIG && CUSTOM_WHEEL_CONFIG.easing ? CUSTOM_WHEEL_CONFIG.easing : "cubic-bezier(0.2, 0.8, 0.3, 1)";
+
     let targetSegment;
     if (wheel) {
         wheel.style.transition = 'none';
         wheel.style.transform = 'rotate(0deg)';
         void wheel.offsetWidth;
-        wheel.style.transition = 'transform 4s cubic-bezier(0.2,0.8,0.3,1)';
-        const fullRotations = GAME_CONFIG.spinningWheel.minRotations + Math.floor(Math.random() * (GAME_CONFIG.spinningWheel.maxRotations - GAME_CONFIG.spinningWheel.minRotations + 1));
-        const segmentAngle = 360 / GAME_CONFIG.spinningWheel.segmentCount;
-        targetSegment = Math.floor(Math.random() * GAME_CONFIG.spinningWheel.segmentCount);
+        wheel.style.transition = `transform ${duration}ms ${easing}`;
+
+        const fullRotations = minRot + Math.floor(Math.random() * (maxRot - minRot + 1));
+        const segmentAngle = 360 / segmentCount;
+        targetSegment = Math.floor(Math.random() * segmentCount);
         const segmentOffset = segmentAngle / 2;
         const targetRotation = (targetSegment * segmentAngle) + segmentOffset;
         const totalRotation = (fullRotations * 360) + targetRotation;
         wheel.style.transform = `rotate(${-totalRotation}deg)`;
     }
+
     setTimeout(() => {
         if (pointer) pointer.classList.remove('spinning');
-        const winner = CLASSMATE_NAMES[targetSegment];
+        let winner;
+        if (CUSTOM_WHEEL_CONFIG && CUSTOM_WHEEL_CONFIG.texts && CUSTOM_WHEEL_CONFIG.texts[targetSegment]) {
+            winner = CUSTOM_WHEEL_CONFIG.texts[targetSegment];
+        } else {
+            // Use original classmate names (fallback)
+            winner = CLASSMATE_NAMES[targetSegment] || `Segment ${targetSegment + 1}`;
+        }
         if (selectedName) selectedName.textContent = winner;
         if (resultModal) resultModal.style.display = 'flex';
-    }, 4000);
-}
-function resetSpinningWheel() {
-    const wheel = document.getElementById('wheel');
-    const resultModal = document.getElementById('resultModal');
-    const spinButton = document.getElementById('spinButton');
-    const pointer = document.querySelector('.wheel-pointer');
-    if (wheel) { wheel.style.transition = 'none'; wheel.style.transform = 'rotate(0deg)'; }
-    if (resultModal) resultModal.style.display = 'none';
-    if (spinButton) spinButton.disabled = false;
-    gameState.isSpinning = false;
-    if (pointer) pointer.classList.remove('spinning');
-    if (wheel) { void wheel.offsetWidth; wheel.style.transition = 'transform 4s cubic-bezier(0.2,0.8,0.3,1)'; }
+    }, duration);
 }
 
 // ============================================
