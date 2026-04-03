@@ -1,6 +1,22 @@
 // ============================================
-// GAME CONFIGURATION
+// CUSTOM SPINNING WHEEL CONFIGURATION
 // ============================================
+// Set to null to use the original wheel, or provide your own settings.
+const CUSTOM_WHEEL_CONFIG = {
+    // Number of segments (must match the length of colors and texts)
+    segmentCount: 6,
+    // Colors for each segment (any CSS color)
+    colors: ["#FF6B6B", "#4F90FF", "#4CAF50", "#FFD700", "#FF6B6B", "#4F90FF"],
+    // Text for each segment (e.g., player names or prizes)
+    texts: ["Alex", "Maria", "John", "Sofia", "David", "Emma"],
+    // Spin duration in milliseconds
+    spinDuration: 4000,
+    // Minimum extra full rotations (randomized between min and max)
+    minRotations: 3,
+    maxRotations: 7,
+    // Easing function: can be "cubic-bezier(0.2, 0.8, 0.3, 1)" or any valid CSS easing
+    easing: "cubic-bezier(0.2, 0.8, 0.3, 1)"
+};
 const GAME_CONFIG = {
     totalQuestions: 15,
     answerRevealDelay: 3000,
