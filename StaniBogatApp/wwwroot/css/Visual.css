@@ -1581,3 +1581,271 @@ h1 {
             max-width: 1200px;
         }
 }
+/* ============================================
+   IMPROVED RESPONSIVE DESIGN FOR MOBILE
+============================================= */
+
+/* Ensure proper viewport scaling */
+html {
+    -webkit-text-size-adjust: 100%;
+    touch-action: manipulation;
+}
+
+/* Make everything scale with viewport width */
+body {
+    overflow-x: hidden;
+}
+
+/* Game container adjustments for all screens */
+.game-container {
+    width: 95%;
+    max-width: 1400px;
+    margin: 100px auto 0 auto;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* For tablets and smaller laptops */
+@media (max-width: 1024px) {
+    .game-container {
+        width: 90%;
+        margin-top: 80px;
+        padding: 15px;
+    }
+
+    .question {
+        font-size: 24px;
+        padding: 20px;
+    }
+
+    .answer-btn {
+        font-size: 18px;
+        padding: 15px;
+    }
+
+    h1 {
+        font-size: 36px;
+    }
+
+    .level-indicator {
+        top: 80px;
+        left: 10px;
+        font-size: 14px;
+        min-width: 180px;
+    }
+}
+
+/* For phones (portrait) */
+@media (max-width: 768px) {
+    .game-container {
+        width: 95%;
+        margin-top: 70px;
+        padding: 12px;
+    }
+
+    h1 {
+        font-size: 28px;
+        margin-bottom: 15px;
+    }
+
+    .question {
+        font-size: 20px;
+        padding: 15px;
+        margin: 20px 0;
+    }
+
+    .answers {
+        grid-template-columns: 1fr;  /* Stack answers vertically */
+        gap: 12px;
+        margin: 20px 0;
+    }
+
+    .answer-btn {
+        font-size: 16px;
+        padding: 14px 12px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Money tree – make it slide from bottom on small screens */
+    .money-tree {
+        width: 85%;
+        max-width: 280px;
+        right: -100%;
+        top: auto;
+        bottom: 20px;
+        transform: none;
+        max-height: 70vh;
+    }
+
+    .money-tree.visible {
+        right: 10px;
+        bottom: 20px;
+        top: auto;
+    }
+
+    .money-tree-toggle {
+        bottom: 20px;
+        top: auto;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        font-size: 24px;
+    }
+
+    .money-tree.visible + .money-tree-toggle {
+        right: calc(85% + 20px);
+        bottom: 20px;
+        top: auto;
+    }
+
+    /* Level indicator */
+    .level-indicator {
+        top: 70px;
+        left: 10px;
+        font-size: 12px;
+        padding: 6px 12px;
+        min-width: 160px;
+    }
+
+    /* Back button */
+    .game-back-button {
+        padding: 10px 20px;
+        font-size: 16px;
+    }
+
+    /* Start menu buttons */
+    .start-button,
+    .tutorial-button,
+    .spinning-wheel-button {
+        padding: 14px 25px;
+        font-size: 18px;
+        min-width: 180px;
+    }
+
+    /* Theme selection buttons */
+    .theme-btn {
+        padding: 12px 20px;
+        font-size: 16px;
+    }
+
+    /* Settings modal */
+    .settings-content {
+        padding: 20px;
+        width: 95%;
+        max-height: 85vh;
+    }
+
+    .volume-control {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .volume-control label {
+        min-width: auto;
+    }
+
+    /* Spinning wheel */
+    .wheel-container {
+        width: 280px;
+        height: 280px;
+    }
+
+    .segment-number {
+        font-size: 12px;
+    }
+
+    .spin-button {
+        padding: 12px 25px;
+        font-size: 18px;
+    }
+
+    /* Tutorial */
+    .tutorial-content {
+        margin: 0 auto;
+        padding: 20px;
+        max-width: 95%;
+    }
+
+    .tutorial-title {
+        font-size: 24px;
+    }
+
+    .tutorial-section h3 {
+        font-size: 18px;
+    }
+
+    .tutorial-text {
+        font-size: 14px;
+    }
+}
+
+/* For very small phones (<= 480px) */
+@media (max-width: 480px) {
+    .game-container {
+        margin-top: 60px;
+        padding: 10px;
+    }
+
+    h1 {
+        font-size: 24px;
+    }
+
+    .question {
+        font-size: 18px;
+        padding: 12px;
+    }
+
+    .answer-btn {
+        font-size: 15px;
+        padding: 12px 8px;
+    }
+
+    .start-button,
+    .tutorial-button,
+    .spinning-wheel-button {
+        padding: 12px 20px;
+        font-size: 16px;
+        min-width: 160px;
+    }
+
+    .level-indicator {
+        top: 60px;
+        font-size: 11px;
+        min-width: 140px;
+    }
+
+    .money-tree {
+        width: 90%;
+        max-width: 260px;
+    }
+
+    .theme-btn {
+        padding: 10px 15px;
+        font-size: 14px;
+    }
+}
+
+/* Landscape orientation on phones */
+@media (max-width: 900px) and (orientation: landscape) {
+    .game-container {
+        margin-top: 50px;
+        padding: 10px;
+    }
+
+    .answers {
+        grid-template-columns: 1fr 1fr; /* Two columns in landscape */
+        gap: 10px;
+    }
+
+    .money-tree {
+        max-height: 80vh;
+        width: 70%;
+        max-width: 240px;
+    }
+
+    .level-indicator {
+        top: 50px;
+    }
+}
