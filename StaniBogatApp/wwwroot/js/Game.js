@@ -54,6 +54,27 @@ const THEME_BACKGROUNDS = {
     // Add more themes later, e.g.:
     // "Super Mario": '/images/mario-bg.jpg',
 };
+function applyMinecraftTheme() {
+    const gameContainer = document.getElementById('gameContainer');
+    const gameTitle = document.querySelector('#gameContainer h1');
+    if (gameContainer) {
+        gameContainer.classList.add('minecraft-theme');
+    }
+    if (gameTitle) {
+        gameTitle.textContent = 'MINECRAFT';
+    }
+}
+
+function removeMinecraftTheme() {
+    const gameContainer = document.getElementById('gameContainer');
+    const gameTitle = document.querySelector('#gameContainer h1');
+    if (gameContainer) {
+        gameContainer.classList.remove('minecraft-theme');
+    }
+    if (gameTitle) {
+        gameTitle.textContent = '🎮 СТАНИ БОГАТ 🎮';
+    }
+}
 
 function setThemeBackground(themeKey) {
     const body = document.body;
@@ -475,6 +496,11 @@ function initializeStartMenu() {
                 stopRetroMusic();
                 // Change background based on theme
                 setThemeBackground(themeKey);
+                if (themeKey === 'Minecraft') {
+    applyMinecraftTheme();
+} else {
+    removeMinecraftTheme();
+}
             }, () => {
                 loadQuestion();
             });
