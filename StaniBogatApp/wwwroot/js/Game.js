@@ -46,14 +46,49 @@ let currentTheme = null;
 let currentThemeQuestions = null;
 
 // ============================================
-// THEME BACKGROUNDS
+// THEME BACKGROUNDS & MUSIC
 // ============================================
 const DEFAULT_BACKGROUND = '/images/StaniBogatBackground.jpg';
 const THEME_BACKGROUNDS = {
     "Minecraft": '/images/StaniBogatMinecraftWallpaper1.jpg'
-    // Add more themes later, e.g.:
-    // "Super Mario": '/images/mario-bg.jpg',
 };
+
+let currentThemeMusic = null;
+
+function setThemeBackground(themeKey) {
+    const body = document.body;
+    let bgImage = DEFAULT_BACKGROUND;
+    if (themeKey && THEME_BACKGROUNDS[themeKey]) {
+        bgImage = THEME_BACKGROUNDS[themeKey];
+    }
+    body.style.backgroundImage = `url('${bgImage}')`;
+}
+
+function resetToDefaultBackground() {
+    document.body.style.backgroundImage = `url('${DEFAULT_BACKGROUND}')`;
+}
+
+function stopThemeMusic() {
+    if (currentThemeMusic) {
+        currentThemeMusic.pause();
+        currentThemeMusic.currentTime = 0;
+        currentThemeMusic = null;
+    }
+}
+
+function playThemeMusic(themeKey) {
+    stopThemeMusic();
+    if (themeKey === 'Minecraft') {
+        const music = document.getElementById('minecraftMusic');
+        if (music) {
+            music.volume = settings.musicVolume;
+            music.loop = true;
+            music.play().catch(e => console.log("Theme music play failed:", e));
+            currentThemeMusic = music;
+        }
+    }
+}
+
 function applyMinecraftTheme() {
     const gameContainer = document.getElementById('gameContainer');
     const gameTitle = document.querySelector('#gameContainer h1');
@@ -76,22 +111,8 @@ function removeMinecraftTheme() {
     }
 }
 
-function setThemeBackground(themeKey) {
-    const body = document.body;
-    let bgImage = DEFAULT_BACKGROUND;
-    if (themeKey && THEME_BACKGROUNDS[themeKey]) {
-        bgImage = THEME_BACKGROUNDS[themeKey];
-    }
-    body.style.backgroundImage = `url('${bgImage}')`;
-    // Also update the overlay color? Not necessary, but you can.
-}
-
-function resetToDefaultBackground() {
-    document.body.style.backgroundImage = `url('${DEFAULT_BACKGROUND}')`;
-}
-
 // ============================================
-// INTRO VIDEO (optional – comment out if not used)
+// INTRO VIDEO (optional)
 // ============================================
 function playIntroVideo() {
     const videoContainer = document.getElementById('introVideo');
@@ -344,6 +365,7 @@ function updateMusicVolume() {
     const start = document.getElementById('startMenuMusic');
     if (retro) retro.volume = settings.musicVolume;
     if (start) start.volume = settings.musicVolume;
+    if (currentThemeMusic) currentThemeMusic.volume = settings.musicVolume;
 }
 
 function playStartMenuMusic() {
@@ -380,6 +402,7 @@ function loadSettings() {
 }
 function resetToDefaultSettings() {
     settings = { sfxVolume: 1.0, musicVolume: 1.0, startMusicEnabled: false, wheelMusicEnabled: true };
+    if (currentThemeMusic) currentThemeMusic.volume = settings.musicVolume;
 }
 
 // ============================================
@@ -420,7 +443,7 @@ function initializeMoneyTreeToggle() {
 }
 
 // ============================================
-// START MENU & THEME SELECTION (UPDATED with background change)
+// START MENU & THEME SELECTION (UPDATED)
 // ============================================
 function initializeStartMenu() {
     const startButton = document.getElementById('startButton');
@@ -494,13 +517,13 @@ function initializeStartMenu() {
                 gameState.isMoneyTreeVisible = false;
                 setTimeout(() => updateGameContainerResponsiveness(), 100);
                 stopRetroMusic();
-                // Change background based on theme
                 setThemeBackground(themeKey);
+                playThemeMusic(themeKey);
                 if (themeKey === 'Minecraft') {
-    applyMinecraftTheme();
-} else {
-    removeMinecraftTheme();
-}
+                    applyMinecraftTheme();
+                } else {
+                    removeMinecraftTheme();
+                }
             }, () => {
                 loadQuestion();
             });
@@ -513,7 +536,8 @@ function initializeStartMenu() {
             performTransition(() => {
                 themeScreen.style.display = 'none';
                 startMenu.style.display = 'flex';
-                resetToDefaultBackground(); // restore default background
+                resetToDefaultBackground();
+                stopThemeMusic();
             });
         });
     }
@@ -535,7 +559,9 @@ function initializeStartMenu() {
                 document.querySelectorAll('.joker-btn').forEach(b => { b.disabled = false; b.classList.remove('used'); });
                 currentTheme = null;
                 currentThemeQuestions = null;
-                resetToDefaultBackground(); // restore default background
+                resetToDefaultBackground();
+                stopThemeMusic();
+                removeMinecraftTheme();
             });
         });
     }
