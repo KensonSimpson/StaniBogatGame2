@@ -94,24 +94,10 @@ function playThemeMusic(themeKey) {
 function playMinecraftClick() {
     if (currentTheme !== 'Minecraft') return;
     
-    // Try using the dedicated audio element first
-    const clickSound = document.getElementById('minecraftClickSound');
-    if (clickSound) {
-        clickSound.currentTime = 0;
-        clickSound.volume = settings.sfxVolume;
-        clickSound.play().catch(e => {
-            console.log("Dedicated click sound failed, using fallback", e);
-            // Fallback: create a new Audio object
-            const fallback = new Audio('/sounds/MinecraftClick.mp3');
-            fallback.volume = settings.sfxVolume;
-            fallback.play().catch(err => console.log("Fallback click sound also failed", err));
-        });
-    } else {
-        // No element, create directly
-        const fallback = new Audio('/sounds/MinecraftClick.mp3');
-        fallback.volume = settings.sfxVolume;
-        fallback.play().catch(err => console.log("Click sound failed", err));
-    }
+    // Always create a new Audio object to ensure independent playback
+    const click = new Audio('/sounds/MinecraftClick.mp3');
+    click.volume = Math.min(settings.sfxVolume * 1.2, 1.0); // slightly louder
+    click.play().catch(e => console.log("Click sound failed:", e));
 }
 
 function minecraftClickHandler(e) {
