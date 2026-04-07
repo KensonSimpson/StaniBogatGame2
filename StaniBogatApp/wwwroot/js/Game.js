@@ -93,10 +93,8 @@ function playThemeMusic(themeKey) {
 
 function playMinecraftClick() {
     if (currentTheme !== 'Minecraft') return;
-    
-    // Always create a new Audio object to ensure independent playback
     const click = new Audio('/sounds/MinecraftClick.mp3');
-    click.volume = Math.min(settings.sfxVolume * 1.2, 1.0); // slightly louder
+    click.volume = settings.sfxVolume;  // exactly follow the SFX volume
     click.play().catch(e => console.log("Click sound failed:", e));
 }
 
@@ -332,6 +330,8 @@ function initializeSettings() {
         settings.sfxVolume = this.value / 100;
         document.getElementById('sfxVolumeValue').textContent = this.value + '%';
         updateAudioVolumes();
+        const minecraftClick = document.getElementById('minecraftClickSound');
+        if (minecraftClick) minecraftClick.volume = settings.sfxVolume;
         saveSettings();
     });
     musicVolumeSlider.addEventListener('input', function () {
