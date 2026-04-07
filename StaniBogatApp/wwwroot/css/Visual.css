@@ -1415,3 +1415,8 @@ body {
         top: 50px;
     }
 }
+.game-container.minecraft-theme {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
