@@ -1,22 +1,6 @@
 // ============================================
-// CUSTOM SPINNING WHEEL CONFIGURATION
+// GAME CONFIGURATION
 // ============================================
-// Set to null to use the original wheel, or provide your own settings.
-const CUSTOM_WHEEL_CONFIG = {
-    // Number of segments (must match the length of colors and texts)
-    segmentCount: 6,
-    // Colors for each segment (any CSS color)
-    colors: ["#FF6B6B", "#4F90FF", "#4CAF50", "#FFD700", "#FF6B6B", "#4F90FF"],
-    // Text for each segment (e.g., player names or prizes)
-    texts: ["Alex", "Maria", "John", "Sofia", "David", "Emma"],
-    // Spin duration in milliseconds
-    spinDuration: 4000,
-    // Minimum extra full rotations (randomized between min and max)
-    minRotations: 3,
-    maxRotations: 7,
-    // Easing function: can be "cubic-bezier(0.2, 0.8, 0.3, 1)" or any valid CSS easing
-    easing: "cubic-bezier(0.2, 0.8, 0.3, 1)"
-};
 const GAME_CONFIG = {
     totalQuestions: 15,
     answerRevealDelay: 3000,
@@ -60,6 +44,30 @@ let settings = {
 let currentLanguage = 'bg';
 let currentTheme = null;
 let currentThemeQuestions = null;
+
+// ============================================
+// THEME BACKGROUNDS
+// ============================================
+const DEFAULT_BACKGROUND = '/images/StaniBogatBackground.jpg';
+const THEME_BACKGROUNDS = {
+    "Minecraft": '/images/StaniBogatMinecraftWallpaper1.jpg'
+    // Add more themes later, e.g.:
+    // "Super Mario": '/images/mario-bg.jpg',
+};
+
+function setThemeBackground(themeKey) {
+    const body = document.body;
+    let bgImage = DEFAULT_BACKGROUND;
+    if (themeKey && THEME_BACKGROUNDS[themeKey]) {
+        bgImage = THEME_BACKGROUNDS[themeKey];
+    }
+    body.style.backgroundImage = `url('${bgImage}')`;
+    // Also update the overlay color? Not necessary, but you can.
+}
+
+function resetToDefaultBackground() {
+    document.body.style.backgroundImage = `url('${DEFAULT_BACKGROUND}')`;
+}
 
 // ============================================
 // INTRO VIDEO (optional – comment out if not used)
@@ -391,7 +399,7 @@ function initializeMoneyTreeToggle() {
 }
 
 // ============================================
-// START MENU & THEME SELECTION (UPDATED)
+// START MENU & THEME SELECTION (UPDATED with background change)
 // ============================================
 function initializeStartMenu() {
     const startButton = document.getElementById('startButton');
@@ -465,6 +473,8 @@ function initializeStartMenu() {
                 gameState.isMoneyTreeVisible = false;
                 setTimeout(() => updateGameContainerResponsiveness(), 100);
                 stopRetroMusic();
+                // Change background based on theme
+                setThemeBackground(themeKey);
             }, () => {
                 loadQuestion();
             });
@@ -477,6 +487,7 @@ function initializeStartMenu() {
             performTransition(() => {
                 themeScreen.style.display = 'none';
                 startMenu.style.display = 'flex';
+                resetToDefaultBackground(); // restore default background
             });
         });
     }
@@ -498,6 +509,7 @@ function initializeStartMenu() {
                 document.querySelectorAll('.joker-btn').forEach(b => { b.disabled = false; b.classList.remove('used'); });
                 currentTheme = null;
                 currentThemeQuestions = null;
+                resetToDefaultBackground(); // restore default background
             });
         });
     }
@@ -552,8 +564,7 @@ function initializeStartMenu() {
 }
 
 // ============================================
-// ============================================
-// CUSTOM WHEEL CONFIGURATION (stored in localStorage)
+// SPINNING WHEEL (with custom support)
 // ============================================
 let customWheelConfig = null;
 
@@ -574,14 +585,11 @@ function saveCustomWheelConfig(config) {
 function resetToOriginalWheel() {
     localStorage.removeItem('staniBogatCustomWheel');
     customWheelConfig = null;
-    createWheelNumbers();  // rebuild original wheel
+    createWheelNumbers();
     const resetBtn = document.getElementById('resetWheelButton');
     if (resetBtn) resetBtn.style.display = 'none';
 }
 
-// ============================================
-// SPINNING WHEEL (with custom support)
-// ============================================
 function initializeSpinningWheel() {
     const spinButton = document.getElementById('spinButton');
     const spinAgain = document.getElementById('spinAgainButton');
@@ -593,7 +601,7 @@ function initializeSpinningWheel() {
     const cancelConfigBtn = document.getElementById('cancelWheelConfig');
 
     loadCustomWheelConfig();
-    createWheelNumbers(); // builds either custom or original
+    createWheelNumbers();
 
     if (customWheelConfig) {
         if (resetBtn) resetBtn.style.display = 'inline-block';
@@ -612,10 +620,8 @@ function initializeSpinningWheel() {
         });
     }
 
-    // Customize button: open modal with current config values
     if (customizeBtn) {
         customizeBtn.addEventListener('click', () => {
-            // Populate modal with existing values
             const segmentCountInput = document.getElementById('segmentCount');
             const namesTextarea = document.getElementById('segmentNames');
             const colorsInput = document.getElementById('segmentColors');
@@ -636,7 +642,6 @@ function initializeSpinningWheel() {
         });
     }
 
-    // Save custom config
     if (saveConfigBtn) {
         saveConfigBtn.addEventListener('click', () => {
             let segmentCount = parseInt(document.getElementById('segmentCount').value, 10);
@@ -646,7 +651,6 @@ function initializeSpinningWheel() {
             let namesRaw = document.getElementById('segmentNames').value;
             let texts = namesRaw ? namesRaw.split(',').map(s => s.trim()) : [];
             if (texts.length !== segmentCount) {
-                // Auto‑generate names if count mismatches
                 texts = [];
                 for (let i = 1; i <= segmentCount; i++) texts.push(`Сегмент ${i}`);
             }
@@ -654,7 +658,6 @@ function initializeSpinningWheel() {
             let colorsRaw = document.getElementById('segmentColors').value;
             let colors = colorsRaw ? colorsRaw.split(',').map(s => s.trim()) : [];
             if (colors.length !== segmentCount) {
-                // Generate rainbow-like colors
                 colors = [];
                 for (let i = 0; i < segmentCount; i++) {
                     const hue = (i * 360 / segmentCount) % 360;
@@ -678,9 +681,8 @@ function initializeSpinningWheel() {
                 easing: "cubic-bezier(0.2, 0.8, 0.3, 1)"
             };
             saveCustomWheelConfig(newConfig);
-            createWheelNumbers(); // rebuild wheel
+            createWheelNumbers();
             configModal.style.display = 'none';
-            const resetBtn = document.getElementById('resetWheelButton');
             if (resetBtn) resetBtn.style.display = 'inline-block';
         });
     }
@@ -691,7 +693,6 @@ function initializeSpinningWheel() {
         });
     }
 
-    // Reset to original wheel
     if (resetBtn) {
         resetBtn.addEventListener('click', () => {
             resetToOriginalWheel();
@@ -699,7 +700,6 @@ function initializeSpinningWheel() {
         });
     }
 
-    // Close modal when clicking outside
     if (configModal) {
         configModal.addEventListener('click', (e) => {
             if (e.target === configModal) configModal.style.display = 'none';
@@ -711,21 +711,16 @@ function createWheelNumbers() {
     const wheel = document.getElementById('wheel');
     if (!wheel) return;
 
-    // Determine config: custom or original
     let segmentCount = 23;
     let texts = null;
     let colors = null;
-    let spinDurationMs = 4000;
 
     if (customWheelConfig && customWheelConfig.segmentCount) {
         segmentCount = customWheelConfig.segmentCount;
         texts = customWheelConfig.texts;
         colors = customWheelConfig.colors;
-        spinDurationMs = customWheelConfig.spinDurationMs || 4000;
     } else {
-        // Original hardcoded texts (classmate names) – only first 23 used
         texts = CLASSMATE_NAMES.slice(0, 23);
-        // Original colors (simplified repeating)
         const defaultColors = ["#FF6B6B", "#4F90FF", "#4CAF50", "#FFD700"];
         colors = [];
         for (let i = 0; i < segmentCount; i++) {
@@ -734,11 +729,9 @@ function createWheelNumbers() {
     }
 
     const segmentAngle = 360 / segmentCount;
-    // Clear existing numbers
     const existingNumbers = wheel.querySelectorAll('.segment-number');
     existingNumbers.forEach(n => n.remove());
 
-    // Build conic gradient
     let gradient = "conic-gradient(";
     for (let i = 0; i < segmentCount; i++) {
         const start = i * segmentAngle;
@@ -749,7 +742,6 @@ function createWheelNumbers() {
     gradient += ")";
     wheel.style.background = gradient;
 
-    // Add text labels
     const radius = 150;
     for (let i = 0; i < segmentCount; i++) {
         const div = document.createElement('div');
@@ -797,7 +789,6 @@ function spinWheel() {
         duration = customWheelConfig.spinDurationMs || 4000;
         easing = customWheelConfig.easing || "cubic-bezier(0.2, 0.8, 0.3, 1)";
     } else {
-        // Original uses CLASSMATE_NAMES
         texts = CLASSMATE_NAMES;
         segmentCount = 23;
     }
@@ -843,10 +834,7 @@ function resetSpinningWheel() {
     if (pointer) pointer.classList.remove('spinning');
     if (wheel) { void wheel.offsetWidth; wheel.style.transition = `transform ${customWheelConfig?.spinDurationMs || 4000}ms ${customWheelConfig?.easing || "cubic-bezier(0.2,0.8,0.3,1)"}`; }
 }
-// ============================================
-// ============================================
-// SPINNING WHEEL (customizable)
-// ===========================================
+
 // ============================================
 // GAME QUESTIONS (theme‑aware)
 // ============================================
@@ -1100,8 +1088,7 @@ function resetGame() {
 // ============================================
 document.addEventListener('DOMContentLoaded', function () {
     console.log("=== GAME INITIALIZATION STARTED ===");
-    // Optional intro video – comment out if you don't have the video element
-    // playIntroVideo();
+    // playIntroVideo(); // uncomment if you have intro video
 
     const startBtn = document.getElementById('startButton');
     const tutorialBtn = document.getElementById('tutorialButton');
