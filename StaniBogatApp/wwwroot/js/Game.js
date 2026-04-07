@@ -91,15 +91,26 @@ function playThemeMusic(themeKey) {
     }
 }
 
-// Minecraft click sound
 function playMinecraftClick() {
-    if (currentTheme === 'Minecraft') {
-        const clickSound = document.getElementById('minecraftClickSound');
-        if (clickSound) {
-            clickSound.currentTime = 0;
-            clickSound.volume = settings.sfxVolume;
-            clickSound.play().catch(e => console.log("Minecraft click sound failed:", e));
-        }
+    if (currentTheme !== 'Minecraft') return;
+    
+    // Try using the dedicated audio element first
+    const clickSound = document.getElementById('minecraftClickSound');
+    if (clickSound) {
+        clickSound.currentTime = 0;
+        clickSound.volume = settings.sfxVolume;
+        clickSound.play().catch(e => {
+            console.log("Dedicated click sound failed, using fallback", e);
+            // Fallback: create a new Audio object
+            const fallback = new Audio('/sounds/MinecraftClick.mp3');
+            fallback.volume = settings.sfxVolume;
+            fallback.play().catch(err => console.log("Fallback click sound also failed", err));
+        });
+    } else {
+        // No element, create directly
+        const fallback = new Audio('/sounds/MinecraftClick.mp3');
+        fallback.volume = settings.sfxVolume;
+        fallback.play().catch(err => console.log("Click sound failed", err));
     }
 }
 
