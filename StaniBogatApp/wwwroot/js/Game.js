@@ -85,8 +85,38 @@ function playThemeMusic(themeKey) {
             music.loop = true;
             music.play().catch(e => console.log("Theme music play failed:", e));
             currentThemeMusic = music;
+        } else {
+            console.error("minecraftMusic element not found!");
         }
     }
+}
+
+// Minecraft click sound
+function playMinecraftClick() {
+    if (currentTheme === 'Minecraft') {
+        const clickSound = document.getElementById('minecraftClickSound');
+        if (clickSound) {
+            clickSound.currentTime = 0;
+            clickSound.volume = settings.sfxVolume;
+            clickSound.play().catch(e => console.log("Minecraft click sound failed:", e));
+        }
+    }
+}
+
+function minecraftClickHandler(e) {
+    if (currentTheme === 'Minecraft') {
+        const btn = e.target.closest('.answer-btn, .joker-btn');
+        if (btn) {
+            playMinecraftClick();
+        }
+    }
+}
+
+function attachMinecraftClickSound() {
+    const gameContainer = document.getElementById('gameContainer');
+    if (!gameContainer) return;
+    gameContainer.removeEventListener('click', minecraftClickHandler);
+    gameContainer.addEventListener('click', minecraftClickHandler);
 }
 
 function applyMinecraftTheme() {
@@ -94,6 +124,7 @@ function applyMinecraftTheme() {
     const gameTitle = document.querySelector('#gameContainer h1');
     if (gameContainer) {
         gameContainer.classList.add('minecraft-theme');
+        attachMinecraftClickSound();
     }
     if (gameTitle) {
         gameTitle.textContent = 'MINECRAFT';
@@ -105,6 +136,7 @@ function removeMinecraftTheme() {
     const gameTitle = document.querySelector('#gameContainer h1');
     if (gameContainer) {
         gameContainer.classList.remove('minecraft-theme');
+        gameContainer.removeEventListener('click', minecraftClickHandler);
     }
     if (gameTitle) {
         gameTitle.textContent = '🎮 СТАНИ БОГАТ 🎮';
