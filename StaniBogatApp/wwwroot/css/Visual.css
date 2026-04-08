@@ -1425,3 +1425,50 @@ body {
     border: none !important;
     box-shadow: none !important;
 }
+/* Game Back Button – round, bottom-left */
+.game-back-button-container {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 1002;
+    display: none; /* initially hidden, shown when game starts */
+}
+
+.game-back-button {
+    background: var(--primary-blue);
+    color: white;
+    border: 3px solid var(--gold-color);
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    font-size: 32px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    text-decoration: none;
+    line-height: 1;
+}
+
+.game-back-button:hover {
+    background: linear-gradient(135deg, #2e58ff, #4f90ff);
+    transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+}
+
+/* On small screens, ensure it doesn't overlap the settings button */
+@media (max-width: 768px) {
+    .game-back-button-container {
+        bottom: 15px;
+        left: 15px;
+    }
+    .game-back-button {
+        width: 50px;
+        height: 50px;
+        font-size: 28px;
+    }
+}
