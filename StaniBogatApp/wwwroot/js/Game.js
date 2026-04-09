@@ -124,8 +124,9 @@ function applyMinecraftTheme() {
         attachMinecraftClickSound();
     }
     if (gameTitle) {
-        // Clear any previous content and ensure proper layout
+        // Clear previous content
         gameTitle.innerHTML = '';
+        // Create image element
         const img = document.createElement('img');
         img.src = '/images/MinecraftLogo.png';
         img.alt = 'Minecraft Logo';
@@ -134,7 +135,7 @@ function applyMinecraftTheme() {
         img.style.height = 'auto';
         img.style.display = 'block';
         img.style.margin = '0 auto';
-        // Fallback: if image fails to load, show text
+        // Fallback in case image fails to load
         img.onerror = function() {
             gameTitle.innerText = 'MINECRAFT';
             gameTitle.style.fontSize = '48px';
@@ -142,12 +143,12 @@ function applyMinecraftTheme() {
             gameTitle.style.color = 'gold';
         };
         gameTitle.appendChild(img);
-        gameTitle.style.fontSize = '';   // reset
+        // Reset any leftover styles
+        gameTitle.style.fontSize = '';
         gameTitle.style.lineHeight = '';
         gameTitle.style.textAlign = 'center';
     }
 }
-
 function removeMinecraftTheme() {
     const gameContainer = document.getElementById('gameContainer');
     const gameTitle = document.querySelector('#gameContainer h1');
