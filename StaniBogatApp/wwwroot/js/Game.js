@@ -122,7 +122,10 @@ function applyMinecraftTheme() {
         attachMinecraftClickSound();
     }
     if (gameTitle) {
-        gameTitle.textContent = 'MINECRAFT';
+        // Replace text with image logo
+        gameTitle.innerHTML = '<img src="/images/MinecraftLogo.png" alt="Minecraft Logo" style="max-width: 300px; width: 80%; height: auto;">';
+        gameTitle.style.fontSize = '0'; // hide any residual text
+        gameTitle.style.lineHeight = '0';
     }
 }
 
@@ -134,7 +137,10 @@ function removeMinecraftTheme() {
         gameContainer.removeEventListener('click', minecraftClickHandler);
     }
     if (gameTitle) {
-        gameTitle.textContent = '🎮 СТАНИ БОГАТ 🎮';
+        // Restore original text
+        gameTitle.innerHTML = '🎮 СТАНИ БОГАТ 🎮';
+        gameTitle.style.fontSize = '';
+        gameTitle.style.lineHeight = '';
     }
 }
 
