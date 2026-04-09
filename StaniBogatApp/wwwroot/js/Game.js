@@ -91,11 +91,13 @@ function playThemeMusic(themeKey) {
     }
 }
 
+// Minecraft click sound
 function playMinecraftClick() {
-    if (currentTheme !== 'Minecraft') return;
-    const click = new Audio('/sounds/MinecraftClick.mp3');
-    click.volume = settings.sfxVolume;  // exactly follow the SFX volume
-    click.play().catch(e => console.log("Click sound failed:", e));
+    if (currentTheme === 'Minecraft') {
+        const click = new Audio('/sounds/MinecraftClick.mp3');
+        click.volume = settings.sfxVolume;
+        click.play().catch(e => console.log("Click sound failed:", e));
+    }
 }
 
 function minecraftClickHandler(e) {
@@ -124,7 +126,7 @@ function applyMinecraftTheme() {
     if (gameTitle) {
         // Replace text with image logo
         gameTitle.innerHTML = '<img src="/images/MinecraftLogo.png" alt="Minecraft Logo" style="max-width: 300px; width: 80%; height: auto;">';
-        gameTitle.style.fontSize = '0'; // hide any residual text
+        gameTitle.style.fontSize = '0';
         gameTitle.style.lineHeight = '0';
     }
 }
@@ -336,8 +338,6 @@ function initializeSettings() {
         settings.sfxVolume = this.value / 100;
         document.getElementById('sfxVolumeValue').textContent = this.value + '%';
         updateAudioVolumes();
-        const minecraftClick = document.getElementById('minecraftClickSound');
-        if (minecraftClick) minecraftClick.volume = settings.sfxVolume;
         saveSettings();
     });
     musicVolumeSlider.addEventListener('input', function () {
