@@ -1459,3 +1459,8 @@ body {
     border: none !important;
     box-shadow: none !important;
 }
+.game-container.minecraft-theme h1 img {
+    max-width: 600px !important;
+    width: 90% !important;
+    height: auto !important;
+}
