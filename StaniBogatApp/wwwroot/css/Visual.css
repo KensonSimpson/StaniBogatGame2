@@ -1454,13 +1454,12 @@ body {
 }
 
 /* Minecraft theme – transparent game container */
+/* Minecraft theme – move logo higher */
 .game-container.minecraft-theme {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
+    margin-top: 60px !important;  /* was 140px, now closer to top */
 }
-.game-container.minecraft-theme h1 img {
-    max-width: 600px !important;
-    width: 90% !important;
-    height: auto !important;
+
+.game-container.minecraft-theme h1 {
+    margin-top: 0 !important;
+    margin-bottom: 15px !important;
 }
