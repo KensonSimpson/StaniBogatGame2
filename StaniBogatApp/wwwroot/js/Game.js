@@ -128,7 +128,6 @@ function applyMinecraftTheme() {
         const img = document.createElement('img');
         img.src = '/images/MinecraftLogo.png';
         img.alt = 'Minecraft Logo';
-        // INCREASED SIZE: max-width 600px, width 90% (up from 300px, 80%)
         img.style.maxWidth = '600px';
         img.style.width = '90%';
         img.style.height = 'auto';
