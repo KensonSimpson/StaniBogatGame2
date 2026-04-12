@@ -95,28 +95,35 @@ function playThemeMusic(themeKey) {
 function playMinecraftClick() {
     if (currentTheme !== 'Minecraft') return;
     const click = new Audio('/sounds/MinecraftClick.mp3');
-    // Increase volume (1.5x, max 1.0)
-    click.volume = Math.min(settings.sfxVolume * 1.5, 1.0);
-    // Skip leading silence (if the sound has ~0.2s of silence, start at 0.1s)
-    click.currentTime = 0.1;
+    // Louder (1.8x, max 1.0)
+    click.volume = Math.min(settings.sfxVolume * 1.8, 1.0);
+    // Skip first 0.15 seconds of silence
+    click.currentTime = 0.15;
     click.play().catch(e => console.log("Click sound failed:", e));
 }
 
-function minecraftClickHandler(e) {
-    if (currentTheme === 'Minecraft') {
-        // Target all clickable buttons in the game interface
-        const btn = e.target.closest('.answer-btn, .joker-btn, .money-tree-toggle, .settings-button, .game-back-button');
-        if (btn) {
-            playMinecraftClick();
-        }
-    }
-}
+let globalClickHandler = null;
 
 function attachMinecraftClickSound() {
-    const gameContainer = document.getElementById('gameContainer');
-    if (!gameContainer) return;
-    gameContainer.removeEventListener('click', minecraftClickHandler);
-    gameContainer.addEventListener('click', minecraftClickHandler);
+    if (globalClickHandler) {
+        document.removeEventListener('click', globalClickHandler);
+    }
+    globalClickHandler = function(e) {
+        if (currentTheme === 'Minecraft') {
+            const btn = e.target.closest('.answer-btn, .joker-btn, .money-tree-toggle, .settings-button, .game-back-button, #settingsButton, #moneyTreeToggle, #gameBackButton');
+            if (btn) {
+                playMinecraftClick();
+            }
+        }
+    };
+    document.addEventListener('click', globalClickHandler);
+}
+
+function removeMinecraftClickSound() {
+    if (globalClickHandler) {
+        document.removeEventListener('click', globalClickHandler);
+        globalClickHandler = null;
+    }
 }
 
 function applyMinecraftTheme() {
@@ -1142,43 +1149,55 @@ function checkAnswer(selected, correct) {
     selectedBtn.style.border = '3px solid #cc9900';
     setTimeout(() => {
         if (selected === correct) {
-            let sound;
-            if (gameState.currentQuestion === 4 || gameState.currentQuestion === 9) sound = 'correctAnswer3';
-            else if (gameState.currentQuestion < 5) sound = 'correctAnswerSound';
-            else sound = 'correctAnswer2';
-            selectedBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
-            selectedBtn.style.color = '#000066';
-            selectedBtn.style.border = '3px solid #00aa00';
-            playSound(sound);
-            setTimeout(() => {
-                const t = TRANSLATIONS[currentLanguage];
-                const prize = t?.prizes?.[gameState.currentQuestion] || `${(gameState.currentQuestion + 1) * 100} BGN`;
-                alert(`✅ Правилен отговор! Спечелихте ${prize}!`);
-                gameState.currentQuestion++;
-                if (gameState.currentQuestion < 15) {
-                    playSound('moveForwardSound');
-                    setTimeout(() => loadQuestion(), 1000);
-                } else {
-                    alert('🎉 ЧЕСТИТО! Спечелихте 100,000 BGN!');
-                    gameState.currentQuestion = 0;
-                    resetGame();
-                }
-            }, 3000);
-        } else {
-            if (correctBtn) {
-                correctBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
-                correctBtn.style.color = '#000066';
-                correctBtn.style.border = '3px solid #00aa00';
-            }
-            playSound('wrongAnswerSound');
-            setTimeout(() => {
-                const t = TRANSLATIONS[currentLanguage];
-                const prize = gameState.currentQuestion > 0 ? (t?.prizes?.[gameState.currentQuestion - 1] || `${gameState.currentQuestion * 100} BGN`) : 'нищо';
-                alert(`❌ Грешен отговор! Играта свърши. Спечелихте: ${prize}`);
+// Inside checkAnswer, after selected === correct
+let sound;
+if (gameState.currentQuestion === 4 || gameState.currentQuestion === 9) sound = 'correctAnswer3';
+else if (gameState.currentQuestion < 5) sound = 'correctAnswerSound';
+else sound = 'correctAnswer2';
+
+// For Minecraft theme, delay the answer sound and the following actions
+if (currentTheme === 'Minecraft') {
+    setTimeout(() => {
+        selectedBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
+        selectedBtn.style.color = '#000066';
+        selectedBtn.style.border = '3px solid #00aa00';
+        playSound(sound);
+        setTimeout(() => {
+            const t = TRANSLATIONS[currentLanguage];
+            const prize = t?.prizes?.[gameState.currentQuestion] || `${(gameState.currentQuestion + 1) * 100} BGN`;
+            alert(`✅ Правилен отговор! Спечелихте ${prize}!`);
+            gameState.currentQuestion++;
+            if (gameState.currentQuestion < 15) {
+                playSound('moveForwardSound');
+                setTimeout(() => loadQuestion(), 1000);
+            } else {
+                alert('🎉 ЧЕСТИТО! Спечелихте 100,000 BGN!');
                 gameState.currentQuestion = 0;
                 resetGame();
-            }, 3000);
+            }
+        }, 3000);
+    }, 750); // 0.75 second delay before answer sound
+} else {
+    // Original immediate behaviour for other themes
+    selectedBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
+    selectedBtn.style.color = '#000066';
+    selectedBtn.style.border = '3px solid #00aa00';
+    playSound(sound);
+    setTimeout(() => {
+        const t = TRANSLATIONS[currentLanguage];
+        const prize = t?.prizes?.[gameState.currentQuestion] || `${(gameState.currentQuestion + 1) * 100} BGN`;
+        alert(`✅ Правилен отговор! Спечелихте ${prize}!`);
+        gameState.currentQuestion++;
+        if (gameState.currentQuestion < 15) {
+            playSound('moveForwardSound');
+            setTimeout(() => loadQuestion(), 1000);
+        } else {
+            alert('🎉 ЧЕСТИТО! Спечелихте 100,000 BGN!');
+            gameState.currentQuestion = 0;
+            resetGame();
         }
+    }, 3000);
+}
     }, 2500);
 }
 function resetGame() {
