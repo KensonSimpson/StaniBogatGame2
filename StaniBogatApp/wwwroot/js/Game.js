@@ -93,16 +93,19 @@ function playThemeMusic(themeKey) {
 
 // Minecraft click sound
 function playMinecraftClick() {
-    if (currentTheme === 'Minecraft') {
-        const click = new Audio('/sounds/MinecraftClick.mp3');
-        click.volume = settings.sfxVolume;
-        click.play().catch(e => console.log("Click sound failed:", e));
-    }
+    if (currentTheme !== 'Minecraft') return;
+    const click = new Audio('/sounds/MinecraftClick.mp3');
+    // Increase volume (1.5x, max 1.0)
+    click.volume = Math.min(settings.sfxVolume * 1.5, 1.0);
+    // Skip leading silence (if the sound has ~0.2s of silence, start at 0.1s)
+    click.currentTime = 0.1;
+    click.play().catch(e => console.log("Click sound failed:", e));
 }
 
 function minecraftClickHandler(e) {
     if (currentTheme === 'Minecraft') {
-        const btn = e.target.closest('.answer-btn, .joker-btn');
+        // Target all clickable buttons in the game interface
+        const btn = e.target.closest('.answer-btn, .joker-btn, .money-tree-toggle, .settings-button, .game-back-button');
         if (btn) {
             playMinecraftClick();
         }
