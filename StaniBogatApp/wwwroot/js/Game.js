@@ -173,6 +173,15 @@ function removeMinecraftTheme() {
 function showMinecraftDeathScreen() {
     const deathScreen = document.getElementById('minecraftDeathScreen');
     if (!deathScreen) return;
+    
+    // Play damage sound
+    const damageSound = document.getElementById('minecraftDamageSound');
+    if (damageSound) {
+        damageSound.currentTime = 0;
+        damageSound.volume = settings.sfxVolume;
+        damageSound.play().catch(e => console.log("Damage sound failed:", e));
+    }
+    
     deathScreen.style.display = 'flex';
     // Auto-hide after 2 seconds
     setTimeout(() => {
@@ -434,6 +443,8 @@ function updateMusicToggleButtons() {
 function updateAudioVolumes() {
     const sounds = ['moveForwardSound', 'answerChosenSound', 'joker5050Sound', 'correctAnswerSound', 'correctAnswer2', 'correctAnswer3', 'wrongAnswerSound', 'friendJokerTimeTick1', 'friendJokerTimeTick2'];
     sounds.forEach(sid => { const s = document.getElementById(sid); if (s) s.volume = settings.sfxVolume; });
+    const damageSound = document.getElementById('minecraftDamageSound');
+    if (damageSound) damageSound.volume = settings.sfxVolume;
 }
 
 function updateMusicVolume() {
