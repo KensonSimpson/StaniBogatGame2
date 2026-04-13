@@ -170,6 +170,15 @@ function removeMinecraftTheme() {
         gameTitle.style.textAlign = '';
     }
 }
+function showMinecraftDeathScreen() {
+    const deathScreen = document.getElementById('minecraftDeathScreen');
+    if (!deathScreen) return;
+    deathScreen.style.display = 'flex';
+    // Auto-hide after 2 seconds
+    setTimeout(() => {
+        deathScreen.style.display = 'none';
+    }, 2000);
+}
 
 // ============================================
 // INTRO VIDEO (optional)
