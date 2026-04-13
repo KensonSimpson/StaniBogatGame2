@@ -98,7 +98,7 @@ function playMinecraftClick() {
     // Louder (1.8x, max 1.0)
     click.volume = Math.min(settings.sfxVolume * 1.8, 1.0);
     // Skip first 0.15 seconds of silence
-    click.currentTime = 0.35;
+    click.currentTime = 0.45;
     click.play().catch(e => console.log("Click sound failed:", e));
 }
 
@@ -110,7 +110,8 @@ function attachMinecraftClickSound() {
     }
     globalClickHandler = function(e) {
         if (currentTheme === 'Minecraft') {
-            const btn = e.target.closest('.answer-btn, .joker-btn, .money-tree-toggle, .settings-button, .game-back-button, #settingsButton, #moneyTreeToggle, #gameBackButton');
+            // Target all interactive elements in the game and settings
+            const btn = e.target.closest('.answer-btn, .joker-btn, .money-tree-toggle, .settings-button, .game-back-button, #settingsButton, #moneyTreeToggle, #gameBackButton, .language-btn, .music-toggle-btn, .close-settings-btn, .reset-settings-btn, .volume-slider');
             if (btn) {
                 playMinecraftClick();
             }
