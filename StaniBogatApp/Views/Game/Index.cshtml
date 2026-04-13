@@ -229,9 +229,10 @@
     </div>
 </div>
 
-<!-- MINECRAFT DEATH SCREEN (NEW) -->
+<!-- MINECRAFT DEATH SCREEN (with semi-transparent red overlay) -->
 <div id="minecraftDeathScreen" class="death-screen" style="display: none;">
-    <img src="/images/MinecraftDeathScreen.png" alt="You Died">
+    <div class="death-overlay"></div>
+    <img src="/images/MinecraftDeathScreen.png" alt="You Died" class="death-text">
 </div>
 
 @section Scripts {
