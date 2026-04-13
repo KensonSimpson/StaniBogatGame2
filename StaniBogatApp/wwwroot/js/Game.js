@@ -98,7 +98,7 @@ function playMinecraftClick() {
     // Louder (1.8x, max 1.0)
     click.volume = Math.min(settings.sfxVolume * 1.8, 1.0);
     // Skip first 0.15 seconds of silence
-    click.currentTime = 0.15;
+    click.currentTime = 0.35;
     click.play().catch(e => console.log("Click sound failed:", e));
 }
 
@@ -355,7 +355,15 @@ function initializeSettings() {
     loadSettings();
 
     settingsButton.addEventListener('click', () => { settingsModal.style.display = 'flex'; updateSettingsDisplay(); });
-    closeSettings.addEventListener('click', () => settingsModal.style.display = 'none');
+    
+    // FIX: When closing settings, reattach Minecraft click sound if needed
+    closeSettings.addEventListener('click', () => {
+        settingsModal.style.display = 'none';
+        if (currentTheme === 'Minecraft') {
+            attachMinecraftClickSound();   // reattach global click listener
+        }
+    });
+    
     settingsModal.addEventListener('click', (e) => { if (e.target === settingsModal) settingsModal.style.display = 'none'; });
 
     sfxVolumeSlider.addEventListener('input', function () {
@@ -393,7 +401,6 @@ function initializeSettings() {
     updateSettingsDisplay();
     updateMusicToggleButtons();
 }
-
 function updateSettingsDisplay() {
     document.getElementById('sfxVolume').value = settings.sfxVolume * 100;
     document.getElementById('sfxVolumeValue').textContent = Math.round(settings.sfxVolume * 100) + '%';
