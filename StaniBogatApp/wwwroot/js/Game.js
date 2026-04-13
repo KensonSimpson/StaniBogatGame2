@@ -1172,7 +1172,7 @@ function checkAnswer(selected, correct) {
             else if (gameState.currentQuestion < 5) sound = 'correctAnswerSound';
             else sound = 'correctAnswer2';
 
-            // Minecraft theme: delay answer sound by 0.75s
+            // For Minecraft theme, delay answer sound and action
             if (currentTheme === 'Minecraft') {
                 setTimeout(() => {
                     selectedBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
@@ -1216,13 +1216,23 @@ function checkAnswer(selected, correct) {
                 }, 3000);
             }
         } else {
-            // Wrong answer – same for all themes
+            // WRONG ANSWER
+            // Reveal correct answer immediately
             if (correctBtn) {
                 correctBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
                 correctBtn.style.color = '#000066';
                 correctBtn.style.border = '3px solid #00aa00';
             }
             playSound('wrongAnswerSound');
+
+            // For Minecraft theme, show death screen after 0.5 seconds
+            if (currentTheme === 'Minecraft') {
+                setTimeout(() => {
+                    showMinecraftDeathScreen();
+                }, 500);
+            }
+
+            // Game over alert after 3 seconds
             setTimeout(() => {
                 const t = TRANSLATIONS[currentLanguage];
                 const prize = gameState.currentQuestion > 0 ? (t?.prizes?.[gameState.currentQuestion - 1] || `${gameState.currentQuestion * 100} BGN`) : 'нищо';
