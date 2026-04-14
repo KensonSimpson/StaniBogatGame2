@@ -1466,23 +1466,31 @@ body {
     margin-bottom: 15px !important;
 }
 /* Minecraft Death Screen */
+/* Death screen - semi‑transparent red background */
 .death-screen {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(255, 0, 0, 0.7); /* semi-transparent red */
     z-index: 20000;
     display: flex;
     justify-content: center;
     align-items: center;
 }
-.death-screen img {
+.death-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 0, 0, 0.7);
+    z-index: 1;
+}
+.death-image {
+    position: relative;
     max-width: 80%;
     max-height: 80%;
-    /* Ensure no extra background */
-    background: transparent;
-    border: none;
-    box-shadow: none;
+    z-index: 2;
+    mix-blend-mode: multiply; /* This makes white/red areas transparent */
 }
