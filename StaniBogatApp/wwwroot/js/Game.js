@@ -175,11 +175,25 @@ function removeMinecraftTheme() {
 }
 
 // ============================================
-// MINECRAFT DEATH SCREEN (with zoom effect)
+// MINECRAFT DEATH SCREEN (with inline zoom)
 // ============================================
+function applyDeathZoom() {
+    const gameContainer = document.getElementById('gameContainer');
+    if (!gameContainer) return;
+    // Use inline style to ensure effect
+    gameContainer.style.transition = 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
+    gameContainer.style.transform = 'scale(1.2) rotate(3deg)';
+}
+
+function removeDeathZoom() {
+    const gameContainer = document.getElementById('gameContainer');
+    if (!gameContainer) return;
+    gameContainer.style.transition = '';
+    gameContainer.style.transform = '';
+}
+
 function showMinecraftDeathScreen() {
     const deathScreen = document.getElementById('minecraftDeathScreen');
-    const gameContainer = document.getElementById('gameContainer');
     if (!deathScreen) return;
     
     // Play damage sound
@@ -190,7 +204,7 @@ function showMinecraftDeathScreen() {
         damageSound.play().catch(e => console.log("Damage sound failed:", e));
     }
     
-    // Update score (current prize)
+    // Update score (optional – you can display prize)
     const scoreSpan = deathScreen.querySelector('.death-score');
     if (scoreSpan) {
         const t = TRANSLATIONS[currentLanguage];
@@ -200,10 +214,8 @@ function showMinecraftDeathScreen() {
         scoreSpan.textContent = `Score: ${prize}`;
     }
     
-    // Apply zoom+rotate effect
-    if (gameContainer) {
-        gameContainer.classList.add('death-zoom');
-    }
+    // Apply zoom effect
+    applyDeathZoom();
     
     deathScreen.style.display = 'flex';
     
@@ -212,7 +224,7 @@ function showMinecraftDeathScreen() {
     if (respawnBtn) {
         respawnBtn.onclick = () => {
             deathScreen.style.display = 'none';
-            if (gameContainer) gameContainer.classList.remove('death-zoom');
+            removeDeathZoom();
             gameState.currentQuestion = 0;
             gameState.usedJokers = { fiftyFifty: false, audience: false, phone: false };
             document.querySelectorAll('.joker-btn').forEach(b => { b.disabled = false; b.classList.remove('used'); });
@@ -225,7 +237,7 @@ function showMinecraftDeathScreen() {
     if (titleBtn) {
         titleBtn.onclick = () => {
             deathScreen.style.display = 'none';
-            if (gameContainer) gameContainer.classList.remove('death-zoom');
+            removeDeathZoom();
             document.getElementById('gameBackButton').click();
         };
     }
@@ -687,8 +699,7 @@ function initializeStartMenu() {
                 resetToDefaultBackground();
                 stopThemeMusic();
                 removeMinecraftTheme();
-                // Remove death zoom if active
-                if (gameContainer) gameContainer.classList.remove('death-zoom');
+                removeDeathZoom();
             });
         });
     }
@@ -1293,8 +1304,7 @@ function checkAnswer(selected, correct) {
 function resetGame() {
     gameState.usedJokers = { fiftyFifty: false, audience: false, phone: false };
     document.querySelectorAll('.joker-btn').forEach(btn => { btn.disabled = false; btn.classList.remove('used'); });
-    const gameContainer = document.getElementById('gameContainer');
-    if (gameContainer) gameContainer.classList.remove('death-zoom');
+    removeDeathZoom();
     setTimeout(loadQuestion, 1000);
 }
 
