@@ -229,16 +229,20 @@
     </div>
 </div>
 
-<!-- MINECRAFT DEATH SCREEN (with semi-transparent red overlay) -->
+<!-- MINECRAFT DEATH SCREEN (with red overlay behind image) -->
 <div id="minecraftDeathScreen" class="death-screen" style="display: none;">
     <div class="death-red-overlay"></div>
     <img src="/images/MinecraftDeathScreen.png" alt="You Died" class="death-image">
+    <div class="death-buttons">
+        <button class="death-respawn">Respawn</button>
+        <button class="death-title-screen">Title Screen</button>
+    </div>
 </div>
 
 @section Scripts {
     <script src="~/js/translations.js"></script>
     <script src="/js/questions-data.js?v=4"></script>
-    <script src="~/js/Game.js?v=4"></script>
+    <script src="~/js/Game.js?v=5"></script>
     <script>
         (function() {
             if (typeof QUESTIONS_DATA === 'undefined') {
