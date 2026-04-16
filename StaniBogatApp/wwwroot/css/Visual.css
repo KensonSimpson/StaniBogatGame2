@@ -1493,3 +1493,8 @@ body {
     z-index: 2;
     background: transparent;
 }
+/* Death zoom effect */
+.game-container.death-zoom {
+    transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: scale(1.2) rotate(3deg);
+}
