@@ -1,6 +1,6 @@
-// ==============================================
+// ============================================
 // GAME CONFIGURATION
-// ==============================================
+// ============================================
 const GAME_CONFIG = {
     totalQuestions: 15,
     answerRevealDelay: 3000,
@@ -91,14 +91,14 @@ function playThemeMusic(themeKey) {
     }
 }
 
-// Minecraft click sound
+// ============================================
+// MINECRAFT CLICK SOUND (global)
+// ============================================
 function playMinecraftClick() {
     if (currentTheme !== 'Minecraft') return;
     const click = new Audio('/sounds/MinecraftClick.mp3');
-    // Louder (1.8x, max 1.0)
     click.volume = Math.min(settings.sfxVolume * 1.8, 1.0);
-    // Skip first 0.15 seconds of silence
-    click.currentTime = 0.45;
+    click.currentTime = 0.15;
     click.play().catch(e => console.log("Click sound failed:", e));
 }
 
@@ -110,7 +110,6 @@ function attachMinecraftClickSound() {
     }
     globalClickHandler = function(e) {
         if (currentTheme === 'Minecraft') {
-            // Target all interactive elements in the game and settings
             const btn = e.target.closest('.answer-btn, .joker-btn, .money-tree-toggle, .settings-button, .game-back-button, #settingsButton, #moneyTreeToggle, #gameBackButton, .language-btn, .music-toggle-btn, .close-settings-btn, .reset-settings-btn, .volume-slider');
             if (btn) {
                 playMinecraftClick();
@@ -127,6 +126,9 @@ function removeMinecraftClickSound() {
     }
 }
 
+// ============================================
+// MINECRAFT THEME (logo, container, click sound)
+// ============================================
 function applyMinecraftTheme() {
     const gameContainer = document.getElementById('gameContainer');
     const gameTitle = document.querySelector('#gameContainer h1');
@@ -156,12 +158,13 @@ function applyMinecraftTheme() {
         gameTitle.style.textAlign = 'center';
     }
 }
+
 function removeMinecraftTheme() {
     const gameContainer = document.getElementById('gameContainer');
     const gameTitle = document.querySelector('#gameContainer h1');
     if (gameContainer) {
         gameContainer.classList.remove('minecraft-theme');
-        removeMinecraftClickSound();   // use the dedicated function
+        removeMinecraftClickSound();
     }
     if (gameTitle) {
         gameTitle.innerHTML = '🎮 СТАНИ БОГАТ 🎮';
@@ -170,8 +173,13 @@ function removeMinecraftTheme() {
         gameTitle.style.textAlign = '';
     }
 }
+
+// ============================================
+// MINECRAFT DEATH SCREEN (with zoom effect)
+// ============================================
 function showMinecraftDeathScreen() {
     const deathScreen = document.getElementById('minecraftDeathScreen');
+    const gameContainer = document.getElementById('gameContainer');
     if (!deathScreen) return;
     
     // Play damage sound
@@ -182,11 +190,45 @@ function showMinecraftDeathScreen() {
         damageSound.play().catch(e => console.log("Damage sound failed:", e));
     }
     
+    // Update score (current prize)
+    const scoreSpan = deathScreen.querySelector('.death-score');
+    if (scoreSpan) {
+        const t = TRANSLATIONS[currentLanguage];
+        const prize = gameState.currentQuestion > 0 
+            ? (t?.prizes?.[gameState.currentQuestion - 1] || `${gameState.currentQuestion * 100} BGN`) 
+            : '0 BGN';
+        scoreSpan.textContent = `Score: ${prize}`;
+    }
+    
+    // Apply zoom+rotate effect
+    if (gameContainer) {
+        gameContainer.classList.add('death-zoom');
+    }
+    
     deathScreen.style.display = 'flex';
-    // Auto-hide after 2 seconds
-    setTimeout(() => {
-        deathScreen.style.display = 'none';
-    }, 2000);
+    
+    // Respawn button: remove zoom, restart game
+    const respawnBtn = deathScreen.querySelector('.death-respawn');
+    if (respawnBtn) {
+        respawnBtn.onclick = () => {
+            deathScreen.style.display = 'none';
+            if (gameContainer) gameContainer.classList.remove('death-zoom');
+            gameState.currentQuestion = 0;
+            gameState.usedJokers = { fiftyFifty: false, audience: false, phone: false };
+            document.querySelectorAll('.joker-btn').forEach(b => { b.disabled = false; b.classList.remove('used'); });
+            loadQuestion();
+        };
+    }
+    
+    // Title Screen button: remove zoom, go to start menu
+    const titleBtn = deathScreen.querySelector('.death-title-screen');
+    if (titleBtn) {
+        titleBtn.onclick = () => {
+            deathScreen.style.display = 'none';
+            if (gameContainer) gameContainer.classList.remove('death-zoom');
+            document.getElementById('gameBackButton').click();
+        };
+    }
 }
 
 // ============================================
@@ -374,15 +416,12 @@ function initializeSettings() {
     loadSettings();
 
     settingsButton.addEventListener('click', () => { settingsModal.style.display = 'flex'; updateSettingsDisplay(); });
-    
-    // FIX: When closing settings, reattach Minecraft click sound if needed
     closeSettings.addEventListener('click', () => {
         settingsModal.style.display = 'none';
         if (currentTheme === 'Minecraft') {
-            attachMinecraftClickSound();   // reattach global click listener
+            attachMinecraftClickSound();
         }
     });
-    
     settingsModal.addEventListener('click', (e) => { if (e.target === settingsModal) settingsModal.style.display = 'none'; });
 
     sfxVolumeSlider.addEventListener('input', function () {
@@ -420,6 +459,7 @@ function initializeSettings() {
     updateSettingsDisplay();
     updateMusicToggleButtons();
 }
+
 function updateSettingsDisplay() {
     document.getElementById('sfxVolume').value = settings.sfxVolume * 100;
     document.getElementById('sfxVolumeValue').textContent = Math.round(settings.sfxVolume * 100) + '%';
@@ -441,10 +481,8 @@ function updateMusicToggleButtons() {
 }
 
 function updateAudioVolumes() {
-    const sounds = ['moveForwardSound', 'answerChosenSound', 'joker5050Sound', 'correctAnswerSound', 'correctAnswer2', 'correctAnswer3', 'wrongAnswerSound', 'friendJokerTimeTick1', 'friendJokerTimeTick2'];
+    const sounds = ['moveForwardSound', 'answerChosenSound', 'joker5050Sound', 'correctAnswerSound', 'correctAnswer2', 'correctAnswer3', 'wrongAnswerSound', 'friendJokerTimeTick1', 'friendJokerTimeTick2', 'minecraftDamageSound'];
     sounds.forEach(sid => { const s = document.getElementById(sid); if (s) s.volume = settings.sfxVolume; });
-    const damageSound = document.getElementById('minecraftDamageSound');
-    if (damageSound) damageSound.volume = settings.sfxVolume;
 }
 
 function updateMusicVolume() {
@@ -649,6 +687,8 @@ function initializeStartMenu() {
                 resetToDefaultBackground();
                 stopThemeMusic();
                 removeMinecraftTheme();
+                // Remove death zoom if active
+                if (gameContainer) gameContainer.classList.remove('death-zoom');
             });
         });
     }
@@ -1183,7 +1223,6 @@ function checkAnswer(selected, correct) {
             else if (gameState.currentQuestion < 5) sound = 'correctAnswerSound';
             else sound = 'correctAnswer2';
 
-            // For Minecraft theme, delay answer sound and action
             if (currentTheme === 'Minecraft') {
                 setTimeout(() => {
                     selectedBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
@@ -1206,7 +1245,6 @@ function checkAnswer(selected, correct) {
                     }, 3000);
                 }, 750);
             } else {
-                // Other themes: immediate answer sound
                 selectedBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
                 selectedBtn.style.color = '#000066';
                 selectedBtn.style.border = '3px solid #00aa00';
@@ -1227,8 +1265,7 @@ function checkAnswer(selected, correct) {
                 }, 3000);
             }
         } else {
-            // WRONG ANSWER
-            // Reveal correct answer immediately
+            // Wrong answer
             if (correctBtn) {
                 correctBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
                 correctBtn.style.color = '#000066';
@@ -1236,14 +1273,12 @@ function checkAnswer(selected, correct) {
             }
             playSound('wrongAnswerSound');
 
-            // For Minecraft theme, show death screen after 0.5 seconds
             if (currentTheme === 'Minecraft') {
                 setTimeout(() => {
                     showMinecraftDeathScreen();
                 }, 500);
             }
 
-            // Game over alert after 3 seconds
             setTimeout(() => {
                 const t = TRANSLATIONS[currentLanguage];
                 const prize = gameState.currentQuestion > 0 ? (t?.prizes?.[gameState.currentQuestion - 1] || `${gameState.currentQuestion * 100} BGN`) : 'нищо';
@@ -1254,9 +1289,12 @@ function checkAnswer(selected, correct) {
         }
     }, 2500);
 }
+
 function resetGame() {
     gameState.usedJokers = { fiftyFifty: false, audience: false, phone: false };
     document.querySelectorAll('.joker-btn').forEach(btn => { btn.disabled = false; btn.classList.remove('used'); });
+    const gameContainer = document.getElementById('gameContainer');
+    if (gameContainer) gameContainer.classList.remove('death-zoom');
     setTimeout(loadQuestion, 1000);
 }
 
