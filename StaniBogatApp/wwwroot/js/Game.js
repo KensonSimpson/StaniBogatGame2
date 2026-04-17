@@ -1278,29 +1278,30 @@ function checkAnswer(selected, correct) {
                     }
                 }, 3000);
             }
-        } else {
-            // Wrong answer
-            if (correctBtn) {
-                correctBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
-                correctBtn.style.color = '#000066';
-                correctBtn.style.border = '3px solid #00aa00';
-            }
-            playSound('wrongAnswerSound');
+} else {
+    // Wrong answer
+    if (correctBtn) {
+        correctBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
+        correctBtn.style.color = '#000066';
+        correctBtn.style.border = '3px solid #00aa00';
+    }
+    playSound('wrongAnswerSound');
 
-            if (currentTheme === 'Minecraft') {
-                setTimeout(() => {
-                    showMinecraftDeathScreen();
-                }, 500);
-            }
-
-            setTimeout(() => {
-                const t = TRANSLATIONS[currentLanguage];
-                const prize = gameState.currentQuestion > 0 ? (t?.prizes?.[gameState.currentQuestion - 1] || `${gameState.currentQuestion * 100} BGN`) : 'нищо';
-                alert(`❌ Грешен отговор! Играта свърши. Спечелихте: ${prize}`);
-                gameState.currentQuestion = 0;
-                resetGame();
-            }, 3000);
-        }
+    if (currentTheme === 'Minecraft') {
+        setTimeout(() => {
+            showMinecraftDeathScreen();
+        }, 500);
+        // No alert for Minecraft theme
+    } else {
+        setTimeout(() => {
+            const t = TRANSLATIONS[currentLanguage];
+            const prize = gameState.currentQuestion > 0 ? (t?.prizes?.[gameState.currentQuestion - 1] || `${gameState.currentQuestion * 100} BGN`) : 'нищо';
+            alert(`❌ Грешен отговор! Играта свърши. Спечелихте: ${prize}`);
+            gameState.currentQuestion = 0;
+            resetGame();
+        }, 3000);
+    }
+}
     }, 2500);
 }
 
