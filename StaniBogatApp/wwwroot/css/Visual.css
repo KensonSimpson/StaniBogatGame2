@@ -1495,8 +1495,8 @@ body {
 }
 /* Death zoom effect */
 .game-container.death-zoom {
-    transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    transform: scale(1.2) rotate(3deg) !important;
+    transition: transform 60s cubic-bezier(0.25, 0.1, 0.1, 1);
+    transform: scale(1.5) rotate(45deg);
 }
 /* Infinite death zoom effect */
 @keyframes deathZoomRotate {
