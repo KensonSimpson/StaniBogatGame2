@@ -1536,3 +1536,29 @@ body {
     background: #333;
     transform: scale(1.05);
 }
+/* Background wrapper for zoom effect */
+.background-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -2;
+    background-image: url('/images/StaniBogatBackground.jpg');
+    background-size: cover;
+    background-position: center;
+    transition: transform 600s cubic-bezier(0.25, 0.1, 0.1, 1);
+}
+/* Minecraft theme background override */
+.minecraft-bg {
+    background-image: url('/images/StaniBogatMinecraftWallpaper1.jpg') !important;
+}
+/* Death zoom effect for both game container and background */
+.game-container.death-zoom {
+    transition: transform 600s cubic-bezier(0.25, 0.1, 0.1, 1);
+    transform: scale(1.5) rotate(45deg);
+}
+.background-wrapper.death-zoom {
+    transition: transform 600s cubic-bezier(0.25, 0.1, 0.1, 1);
+    transform: scale(1.5) rotate(45deg);
+}
