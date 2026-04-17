@@ -1498,3 +1498,16 @@ body {
     transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1) !important;
     transform: scale(1.2) rotate(3deg) !important;
 }
+/* Infinite death zoom effect */
+@keyframes deathZoomRotate {
+    0% {
+        transform: scale(1) rotate(0deg);
+    }
+    100% {
+        transform: scale(1.5) rotate(45deg);
+    }
+}
+
+.game-container.death-zoom {
+    animation: deathZoomRotate 60s linear infinite;
+}
