@@ -179,17 +179,20 @@ function removeMinecraftTheme() {
 // ============================================
 function applyDeathZoom() {
     const gameContainer = document.getElementById('gameContainer');
-    if (!gameContainer) return;
-    // Use inline style to ensure effect
-    gameContainer.style.transition = 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
-    gameContainer.style.transform = 'scale(1.2) rotate(3deg)';
+    if (gameContainer) {
+        // Reset any previous transform to ensure smooth start
+        gameContainer.style.transform = '';
+        // Force reflow to apply reset
+        void gameContainer.offsetWidth;
+        gameContainer.classList.add('death-zoom');
+    }
 }
 
 function removeDeathZoom() {
     const gameContainer = document.getElementById('gameContainer');
-    if (!gameContainer) return;
-    gameContainer.style.transition = '';
-    gameContainer.style.transform = '';
+    if (gameContainer) {
+        gameContainer.classList.remove('death-zoom');
+    }
 }
 
 function showMinecraftDeathScreen() {
