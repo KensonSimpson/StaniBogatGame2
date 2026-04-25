@@ -191,16 +191,22 @@ function removeMinecraftTheme() {
 }
 
 // ============================================
-// MINECRAFT DEATH SCREEN (with 600s zoom)
+// MINECRAFT DEATH SCREEN (with 3600s zoom)
 // ============================================
 function applyDeathZoom() {
     const gameContainer = document.getElementById('gameContainer');
+    const bgWrapper = document.getElementById('backgroundWrapper');
     if (gameContainer) gameContainer.classList.add('death-zoom');
-    if (bgWrapper) bgWrapper.classList.add('death-zoom');
+    if (bgWrapper) {
+        bgWrapper.classList.add('death-zoom');
+        // Force reflow to ensure transition starts from current transform
+        void bgWrapper.offsetWidth;
+    }
 }
 
 function removeDeathZoom() {
     const gameContainer = document.getElementById('gameContainer');
+    const bgWrapper = document.getElementById('backgroundWrapper');
     if (gameContainer) gameContainer.classList.remove('death-zoom');
     if (bgWrapper) bgWrapper.classList.remove('death-zoom');
 }
