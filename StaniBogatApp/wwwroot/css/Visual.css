@@ -1477,7 +1477,7 @@ body {
     background-image: url('/images/StaniBogatBackground.jpg');
     background-size: cover;
     background-position: center;
-    transition: transform 60s cubic-bezier(0.25, 0.1, 0.1, 1);
+    transition: transform 60s linear;   /* changed from cubic-bezier to linear */
     transform: scale(1) rotate(0deg);
     transform-origin: center center;
 }
@@ -1486,7 +1486,7 @@ body {
 }
 .game-container.death-zoom,
 .background-wrapper.death-zoom {
-    transition: transform 60s cubic-bezier(0.25, 0.1, 0.1, 1) !important;
+    transition: transform 60s linear !important;   /* linear for constant slow speed */
     transform: scale(1.5) rotate(45deg) !important;
     transform-origin: center center !important;
 }
