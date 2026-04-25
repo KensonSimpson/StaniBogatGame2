@@ -196,11 +196,19 @@ function removeMinecraftTheme() {
 function applyDeathZoom() {
     const gameContainer = document.getElementById('gameContainer');
     const bgWrapper = document.getElementById('backgroundWrapper');
-    if (gameContainer) gameContainer.classList.add('death-zoom');
-    if (bgWrapper) {
-        bgWrapper.classList.add('death-zoom');
-        // Force reflow to ensure transition starts from current transform
+    if (gameContainer) {
+        // Remove any existing class first? No, we'll add it after force reflow.
+        // But we need to ensure the current transform is the identity.
+        // However, the elements might already have transforms from previous zoom.
+        // To be safe, we reset inline transforms.
+        gameContainer.style.transform = '';
+        bgWrapper.style.transform = '';
+        // Force reflow
+        void gameContainer.offsetWidth;
         void bgWrapper.offsetWidth;
+        // Now add the class to trigger the transition from current state (identity) to target
+        gameContainer.classList.add('death-zoom');
+        bgWrapper.classList.add('death-zoom');
     }
 }
 
