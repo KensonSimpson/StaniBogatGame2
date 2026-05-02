@@ -14,7 +14,8 @@
 }
 
 body {
-    background-image: url('/images/StaniBogatBackground.jpg');
+    background-color: black; /* fallback */
+    /* No background image here – the wrapper handles it */
     background-repeat: no-repeat;
     background-position: center center;
     background-attachment: fixed;
