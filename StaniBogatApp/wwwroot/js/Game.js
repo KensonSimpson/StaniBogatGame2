@@ -46,7 +46,7 @@ let currentTheme = null;
 let currentThemeQuestions = null;
 
 // ============================================
-// BACKGROUND WRAPPER
+// BACKGROUND WRAPPER (ONLY ONE BACKGROUND)
 // ============================================
 const bgWrapper = document.getElementById('backgroundWrapper');
 const DEFAULT_BACKGROUND = '/images/StaniBogatBackground.jpg';
@@ -55,24 +55,20 @@ const THEME_BACKGROUNDS = {
 };
 
 function setThemeBackground(themeKey) {
-    const body = document.body;
+    if (!bgWrapper) return;
+    bgWrapper.classList.remove('minecraft-bg');
     let bgImage = DEFAULT_BACKGROUND;
     if (themeKey && THEME_BACKGROUNDS[themeKey]) {
         bgImage = THEME_BACKGROUNDS[themeKey];
-    }
-    body.style.backgroundImage = `url('${bgImage}')`;
-    if (bgWrapper) {
-        bgWrapper.classList.remove('minecraft-bg');
         if (themeKey === 'Minecraft') {
             bgWrapper.classList.add('minecraft-bg');
-        } else {
-            bgWrapper.style.backgroundImage = `url('${bgImage}')`;
         }
     }
+    bgWrapper.style.backgroundImage = `url('${bgImage}')`;
+    // No body background image is set anymore
 }
 
 function resetToDefaultBackground() {
-    document.body.style.backgroundImage = `url('${DEFAULT_BACKGROUND}')`;
     if (bgWrapper) {
         bgWrapper.classList.remove('minecraft-bg');
         bgWrapper.style.backgroundImage = `url('${DEFAULT_BACKGROUND}')`;
@@ -191,24 +187,15 @@ function removeMinecraftTheme() {
 }
 
 // ============================================
-// MINECRAFT DEATH SCREEN (with 3600s zoom)
+// MINECRAFT DEATH SCREEN (ZOOM & ROTATE)
 // ============================================
 function applyDeathZoom() {
     const gameContainer = document.getElementById('gameContainer');
     const bgWrapper = document.getElementById('backgroundWrapper');
-    if (gameContainer) {
-        // Remove any existing class first? No, we'll add it after force reflow.
-        // But we need to ensure the current transform is the identity.
-        // However, the elements might already have transforms from previous zoom.
-        // To be safe, we reset inline transforms.
-        gameContainer.style.transform = '';
-        bgWrapper.style.transform = '';
-        // Force reflow
-        void gameContainer.offsetWidth;
-        void bgWrapper.offsetWidth;
-        // Now add the class to trigger the transition from current state (identity) to target
-        gameContainer.classList.add('death-zoom');
+    if (gameContainer) gameContainer.classList.add('death-zoom');
+    if (bgWrapper) {
         bgWrapper.classList.add('death-zoom');
+        void bgWrapper.offsetWidth; // force reflow
     }
 }
 
@@ -231,12 +218,9 @@ function showMinecraftDeathScreen() {
         damageSound.play().catch(e => console.log("Damage sound failed:", e));
     }
     
-    // Apply zoom effect
     applyDeathZoom();
-    
     deathScreen.style.display = 'flex';
     
-    // Respawn button
     const respawnBtn = deathScreen.querySelector('.death-respawn');
     if (respawnBtn) {
         respawnBtn.onclick = () => {
@@ -249,7 +233,6 @@ function showMinecraftDeathScreen() {
         };
     }
     
-    // Title Screen button
     const titleBtn = deathScreen.querySelector('.death-title-screen');
     if (titleBtn) {
         titleBtn.onclick = () => {
@@ -618,7 +601,7 @@ function initializeStartMenu() {
     const backFromTheme = document.getElementById('backFromThemeButton');
     const themeButtonsContainer = document.querySelector('.theme-buttons-container');
 
-    // Populate theme buttons from QUESTIONS_DATA
+    // Populate theme buttons
     if (themeButtonsContainer && typeof QUESTIONS_DATA !== 'undefined') {
         themeButtonsContainer.innerHTML = '';
         for (const themeKey in QUESTIONS_DATA) {
