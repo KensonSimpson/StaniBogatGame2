@@ -65,7 +65,8 @@ function setThemeBackground(themeKey) {
         }
     }
     bgWrapper.style.backgroundImage = `url('${bgImage}')`;
-    // No body background image is set anymore
+    // Remove any inline background from body
+    document.body.style.backgroundImage = 'none';
 }
 
 function resetToDefaultBackground() {
@@ -73,6 +74,7 @@ function resetToDefaultBackground() {
         bgWrapper.classList.remove('minecraft-bg');
         bgWrapper.style.backgroundImage = `url('${DEFAULT_BACKGROUND}')`;
     }
+    document.body.style.backgroundImage = 'none';
 }
 
 // ============================================
