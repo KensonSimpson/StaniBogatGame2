@@ -1468,16 +1468,30 @@ body {
 /* ============================================
    BACKGROUND WRAPPER & DEATH ZOOM (CORRECTED)
 ============================================= */
+/* Base background – zoomed in by 30% to prevent black corners when rotating */
 .background-wrapper {
-    background-size: 130% auto;  /* zoom in by 30% */
-    background-position: center; /* keep centered */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -2;
+    background-image: url('/images/StaniBogatBackground.jpg');
+    background-size: cover;
+    background-position: center;
+    transition: transform 60s linear;
+    transform: scale(1.3) rotate(0deg);
+    transform-origin: center center;
 }
+
 .minecraft-bg {
     background-image: url('/images/StaniBogatMinecraftWallpaper1.jpg') !important;
 }
+
+/* Death zoom – additional scaling and rotation */
 .game-container.death-zoom,
 .background-wrapper.death-zoom {
-    transition: transform 60s linear !important;   /* linear for constant slow speed */
+    transition: transform 60s linear !important;
     transform: scale(1.5) rotate(45deg) !important;
     transform-origin: center center !important;
 }
