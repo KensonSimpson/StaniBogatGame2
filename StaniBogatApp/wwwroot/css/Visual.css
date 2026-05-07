@@ -1469,18 +1469,8 @@ body {
    BACKGROUND WRAPPER & DEATH ZOOM (CORRECTED)
 ============================================= */
 .background-wrapper {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: -2;
-    background-image: url('/images/StaniBogatBackground.jpg');
-    background-size: cover;
-    background-position: center;
-    transition: transform 60s linear;   /* changed from cubic-bezier to linear */
-    transform: scale(1) rotate(0deg);
-    transform-origin: center center;
+    background-size: 130% auto;  /* zoom in by 30% */
+    background-position: center; /* keep centered */
 }
 .minecraft-bg {
     background-image: url('/images/StaniBogatMinecraftWallpaper1.jpg') !important;
