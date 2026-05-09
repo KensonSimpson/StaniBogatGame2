@@ -1470,6 +1470,7 @@ body {
    - Initial zoom: 80% larger (scale 1.8) to avoid black corners.
    - Death zoom: further scales to 2.5 and rotates 45° over 60 seconds.
 ============================================= */
+/* Base background – no transition, pre‑death transform */
 .background-wrapper {
     position: fixed;
     top: 0;
@@ -1480,7 +1481,7 @@ body {
     background-image: url('/images/StaniBogatBackground.jpg');
     background-size: cover;
     background-position: center;
-    transition: transform 60s linear;
+    transition: none;                      /* no transition on base */
     transform: scale(1.8) rotate(0deg);
     transform-origin: center center;
 }
@@ -1490,20 +1491,21 @@ body {
 }
 
 .game-container.death-zoom,
-/* Background zooms dramatically (scale 1.8 → 2.5) */
+/* Death background – slow transition, final transform */
 .background-wrapper.death-zoom {
     transition: transform 60s linear !important;
     transform: scale(2.5) rotate(45deg) !important;
-    transform-origin: center center !important;
 }
 
-/* Game container zooms to 1.5 (same as original, or adjust as you like) */
+/* Death game container – slow transition, final transform */
 .game-container.death-zoom {
     transition: transform 60s linear !important;
     transform: scale(1.5) rotate(45deg) !important;
-    transform-origin: center center !important;
 }
-
+/* Game container – no transition on base */
+.game-container {
+    transition: none;                      /* base: no transition */
+}
 /* Death screen – stays on top */
 .death-screen {
     position: fixed;
