@@ -1490,17 +1490,17 @@ body {
 }
 
 .game-container.death-zoom,
-/* Background zooms dramatically */
+/* Background zooms dramatically (scale 1.8 → 2.5) */
 .background-wrapper.death-zoom {
     transition: transform 60s linear !important;
     transform: scale(2.5) rotate(45deg) !important;
     transform-origin: center center !important;
 }
 
-/* Game container zooms minimally (so logo and questions stay nearly the same size) */
+/* Game container zooms to 1.5 (same as original, or adjust as you like) */
 .game-container.death-zoom {
     transition: transform 60s linear !important;
-    transform: scale(1.1) rotate(45deg) !important;
+    transform: scale(1.5) rotate(45deg) !important;
     transform-origin: center center !important;
 }
 
