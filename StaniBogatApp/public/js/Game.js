@@ -1,4 +1,4 @@
-﻿// ============================================
+// ============================================
 // GAME CONFIGURATION
 // ============================================
 const GAME_CONFIG = {
@@ -46,7 +46,207 @@ let currentTheme = null;
 let currentThemeQuestions = null;
 
 // ============================================
-// INTRO VIDEO (optional – comment out if not used)
+// BACKGROUND WRAPPER (ONLY ONE BACKGROUND)
+// ============================================
+const bgWrapper = document.getElementById('backgroundWrapper');
+const DEFAULT_BACKGROUND = '/images/StaniBogatBackground.jpg';
+const THEME_BACKGROUNDS = {
+    "Minecraft": '/images/StaniBogatMinecraftWallpaper1.jpg'
+};
+
+function setThemeBackground(themeKey) {
+    if (!bgWrapper) return;
+    bgWrapper.classList.remove('minecraft-bg');
+    let bgImage = DEFAULT_BACKGROUND;
+    if (themeKey && THEME_BACKGROUNDS[themeKey]) {
+        bgImage = THEME_BACKGROUNDS[themeKey];
+        if (themeKey === 'Minecraft') {
+            bgWrapper.classList.add('minecraft-bg');
+        }
+    }
+    bgWrapper.style.backgroundImage = `url('${bgImage}')`;
+    // Remove any inline background from body
+    document.body.style.backgroundImage = 'none';
+}
+
+function resetToDefaultBackground() {
+    if (bgWrapper) {
+        bgWrapper.classList.remove('minecraft-bg');
+        bgWrapper.style.backgroundImage = `url('${DEFAULT_BACKGROUND}')`;
+    }
+    document.body.style.backgroundImage = 'none';
+}
+
+// ============================================
+// THEME MUSIC
+// ============================================
+let currentThemeMusic = null;
+
+function stopThemeMusic() {
+    if (currentThemeMusic) {
+        currentThemeMusic.pause();
+        currentThemeMusic.currentTime = 0;
+        currentThemeMusic = null;
+    }
+}
+
+function playThemeMusic(themeKey) {
+    stopThemeMusic();
+    if (themeKey === 'Minecraft') {
+        const music = document.getElementById('minecraftMusic');
+        if (music) {
+            music.volume = settings.musicVolume;
+            music.loop = true;
+            music.play().catch(e => console.log("Theme music play failed:", e));
+            currentThemeMusic = music;
+        } else {
+            console.error("minecraftMusic element not found!");
+        }
+    }
+}
+
+// ============================================
+// MINECRAFT CLICK SOUND (global)
+// ============================================
+function playMinecraftClick() {
+    if (currentTheme !== 'Minecraft') return;
+    const click = new Audio('/sounds/MinecraftClick.mp3');
+    click.volume = Math.min(settings.sfxVolume * 1.8, 1.0);
+    click.currentTime = 0.15;
+    click.play().catch(e => console.log("Click sound failed:", e));
+}
+
+let globalClickHandler = null;
+
+function attachMinecraftClickSound() {
+    if (globalClickHandler) {
+        document.removeEventListener('click', globalClickHandler);
+    }
+    globalClickHandler = function(e) {
+        if (currentTheme === 'Minecraft') {
+            const btn = e.target.closest('.answer-btn, .joker-btn, .money-tree-toggle, .settings-button, .game-back-button, #settingsButton, #moneyTreeToggle, #gameBackButton, .language-btn, .music-toggle-btn, .close-settings-btn, .reset-settings-btn, .volume-slider');
+            if (btn) {
+                playMinecraftClick();
+            }
+        }
+    };
+    document.addEventListener('click', globalClickHandler);
+}
+
+function removeMinecraftClickSound() {
+    if (globalClickHandler) {
+        document.removeEventListener('click', globalClickHandler);
+        globalClickHandler = null;
+    }
+}
+
+// ============================================
+// MINECRAFT THEME (logo, container, click sound)
+// ============================================
+function applyMinecraftTheme() {
+    const gameContainer = document.getElementById('gameContainer');
+    const gameTitle = document.querySelector('#gameContainer h1');
+    if (gameContainer) {
+        gameContainer.classList.add('minecraft-theme');
+        attachMinecraftClickSound();
+    }
+    if (gameTitle) {
+        gameTitle.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = '/images/MinecraftLogo.png';
+        img.alt = 'Minecraft Logo';
+        img.style.maxWidth = '600px';
+        img.style.width = '90%';
+        img.style.height = 'auto';
+        img.style.display = 'block';
+        img.style.margin = '0 auto';
+        img.onerror = function() {
+            gameTitle.innerText = 'MINECRAFT';
+            gameTitle.style.fontSize = '48px';
+            gameTitle.style.lineHeight = 'normal';
+            gameTitle.style.color = 'gold';
+        };
+        gameTitle.appendChild(img);
+        gameTitle.style.fontSize = '';
+        gameTitle.style.lineHeight = '';
+        gameTitle.style.textAlign = 'center';
+    }
+}
+
+function removeMinecraftTheme() {
+    const gameContainer = document.getElementById('gameContainer');
+    const gameTitle = document.querySelector('#gameContainer h1');
+    if (gameContainer) {
+        gameContainer.classList.remove('minecraft-theme');
+        removeMinecraftClickSound();
+    }
+    if (gameTitle) {
+        gameTitle.innerHTML = '🎮 СТАНИ БОГАТ 🎮';
+        gameTitle.style.fontSize = '';
+        gameTitle.style.lineHeight = '';
+        gameTitle.style.textAlign = '';
+    }
+}
+
+// ============================================
+// MINECRAFT DEATH SCREEN (ZOOM & ROTATE)
+// ============================================
+function applyDeathZoom() {
+    const gameContainer = document.getElementById('gameContainer');
+    const bgWrapper = document.getElementById('backgroundWrapper');
+    if (gameContainer) gameContainer.classList.add('death-zoom');
+    if (bgWrapper) {
+        bgWrapper.classList.add('death-zoom');
+        void bgWrapper.offsetWidth; // force reflow
+    }
+}
+
+function removeDeathZoom() {
+    const gameContainer = document.getElementById('gameContainer');
+    const bgWrapper = document.getElementById('backgroundWrapper');
+    if (gameContainer) gameContainer.classList.remove('death-zoom');
+    if (bgWrapper) bgWrapper.classList.remove('death-zoom');
+}
+
+function showMinecraftDeathScreen() {
+    const deathScreen = document.getElementById('minecraftDeathScreen');
+    if (!deathScreen) return;
+    
+    // Play damage sound
+    const damageSound = document.getElementById('minecraftDamageSound');
+    if (damageSound) {
+        damageSound.currentTime = 0;
+        damageSound.volume = settings.sfxVolume;
+        damageSound.play().catch(e => console.log("Damage sound failed:", e));
+    }
+    
+    applyDeathZoom();
+    deathScreen.style.display = 'flex';
+    
+    const respawnBtn = deathScreen.querySelector('.death-respawn');
+    if (respawnBtn) {
+        respawnBtn.onclick = () => {
+            deathScreen.style.display = 'none';
+            removeDeathZoom();
+            gameState.currentQuestion = 0;
+            gameState.usedJokers = { fiftyFifty: false, audience: false, phone: false };
+            document.querySelectorAll('.joker-btn').forEach(b => { b.disabled = false; b.classList.remove('used'); });
+            loadQuestion();
+        };
+    }
+    
+    const titleBtn = deathScreen.querySelector('.death-title-screen');
+    if (titleBtn) {
+        titleBtn.onclick = () => {
+            deathScreen.style.display = 'none';
+            removeDeathZoom();
+            document.getElementById('gameBackButton').click();
+        };
+    }
+}
+
+// ============================================
+// INTRO VIDEO (optional)
 // ============================================
 function playIntroVideo() {
     const videoContainer = document.getElementById('introVideo');
@@ -230,7 +430,12 @@ function initializeSettings() {
     loadSettings();
 
     settingsButton.addEventListener('click', () => { settingsModal.style.display = 'flex'; updateSettingsDisplay(); });
-    closeSettings.addEventListener('click', () => settingsModal.style.display = 'none');
+    closeSettings.addEventListener('click', () => {
+        settingsModal.style.display = 'none';
+        if (currentTheme === 'Minecraft') {
+            attachMinecraftClickSound();
+        }
+    });
     settingsModal.addEventListener('click', (e) => { if (e.target === settingsModal) settingsModal.style.display = 'none'; });
 
     sfxVolumeSlider.addEventListener('input', function () {
@@ -290,7 +495,7 @@ function updateMusicToggleButtons() {
 }
 
 function updateAudioVolumes() {
-    const sounds = ['moveForwardSound', 'answerChosenSound', 'joker5050Sound', 'correctAnswerSound', 'correctAnswer2', 'correctAnswer3', 'wrongAnswerSound', 'friendJokerTimeTick1', 'friendJokerTimeTick2'];
+    const sounds = ['moveForwardSound', 'answerChosenSound', 'joker5050Sound', 'correctAnswerSound', 'correctAnswer2', 'correctAnswer3', 'wrongAnswerSound', 'friendJokerTimeTick1', 'friendJokerTimeTick2', 'minecraftDamageSound'];
     sounds.forEach(sid => { const s = document.getElementById(sid); if (s) s.volume = settings.sfxVolume; });
 }
 
@@ -299,6 +504,7 @@ function updateMusicVolume() {
     const start = document.getElementById('startMenuMusic');
     if (retro) retro.volume = settings.musicVolume;
     if (start) start.volume = settings.musicVolume;
+    if (currentThemeMusic) currentThemeMusic.volume = settings.musicVolume;
 }
 
 function playStartMenuMusic() {
@@ -335,6 +541,7 @@ function loadSettings() {
 }
 function resetToDefaultSettings() {
     settings = { sfxVolume: 1.0, musicVolume: 1.0, startMusicEnabled: false, wheelMusicEnabled: true };
+    if (currentThemeMusic) currentThemeMusic.volume = settings.musicVolume;
 }
 
 // ============================================
@@ -396,7 +603,7 @@ function initializeStartMenu() {
     const backFromTheme = document.getElementById('backFromThemeButton');
     const themeButtonsContainer = document.querySelector('.theme-buttons-container');
 
-    // Populate theme buttons from QUESTIONS_DATA
+    // Populate theme buttons
     if (themeButtonsContainer && typeof QUESTIONS_DATA !== 'undefined') {
         themeButtonsContainer.innerHTML = '';
         for (const themeKey in QUESTIONS_DATA) {
@@ -449,6 +656,13 @@ function initializeStartMenu() {
                 gameState.isMoneyTreeVisible = false;
                 setTimeout(() => updateGameContainerResponsiveness(), 100);
                 stopRetroMusic();
+                setThemeBackground(themeKey);
+                playThemeMusic(themeKey);
+                if (themeKey === 'Minecraft') {
+                    applyMinecraftTheme();
+                } else {
+                    removeMinecraftTheme();
+                }
             }, () => {
                 loadQuestion();
             });
@@ -461,6 +675,8 @@ function initializeStartMenu() {
             performTransition(() => {
                 themeScreen.style.display = 'none';
                 startMenu.style.display = 'flex';
+                resetToDefaultBackground();
+                stopThemeMusic();
             });
         });
     }
@@ -482,6 +698,10 @@ function initializeStartMenu() {
                 document.querySelectorAll('.joker-btn').forEach(b => { b.disabled = false; b.classList.remove('used'); });
                 currentTheme = null;
                 currentThemeQuestions = null;
+                resetToDefaultBackground();
+                stopThemeMusic();
+                removeMinecraftTheme();
+                removeDeathZoom();
             });
         });
     }
@@ -536,13 +756,51 @@ function initializeStartMenu() {
 }
 
 // ============================================
-// SPINNING WHEEL (full original)
+// SPINNING WHEEL (with custom support)
 // ============================================
+let customWheelConfig = null;
+
+function loadCustomWheelConfig() {
+    try {
+        const saved = localStorage.getItem('staniBogatCustomWheel');
+        if (saved) customWheelConfig = JSON.parse(saved);
+    } catch(e) { console.error("Failed to load custom wheel config", e); }
+}
+
+function saveCustomWheelConfig(config) {
+    try {
+        localStorage.setItem('staniBogatCustomWheel', JSON.stringify(config));
+        customWheelConfig = config;
+    } catch(e) { console.error("Failed to save custom wheel config", e); }
+}
+
+function resetToOriginalWheel() {
+    localStorage.removeItem('staniBogatCustomWheel');
+    customWheelConfig = null;
+    createWheelNumbers();
+    const resetBtn = document.getElementById('resetWheelButton');
+    if (resetBtn) resetBtn.style.display = 'none';
+}
+
 function initializeSpinningWheel() {
     const spinButton = document.getElementById('spinButton');
     const spinAgain = document.getElementById('spinAgainButton');
     const resultModal = document.getElementById('resultModal');
+    const customizeBtn = document.getElementById('customizeWheelButton');
+    const resetBtn = document.getElementById('resetWheelButton');
+    const configModal = document.getElementById('wheelConfigModal');
+    const saveConfigBtn = document.getElementById('saveWheelConfig');
+    const cancelConfigBtn = document.getElementById('cancelWheelConfig');
+
+    loadCustomWheelConfig();
     createWheelNumbers();
+
+    if (customWheelConfig) {
+        if (resetBtn) resetBtn.style.display = 'inline-block';
+    } else {
+        if (resetBtn) resetBtn.style.display = 'none';
+    }
+
     if (spinButton) {
         spinButton.addEventListener('click', () => { if (!gameState.isSpinning) spinWheel(); });
     }
@@ -553,20 +811,135 @@ function initializeSpinningWheel() {
             gameState.isSpinning = false;
         });
     }
+
+    if (customizeBtn) {
+        customizeBtn.addEventListener('click', () => {
+            const segmentCountInput = document.getElementById('segmentCount');
+            const namesTextarea = document.getElementById('segmentNames');
+            const colorsInput = document.getElementById('segmentColors');
+            const durationInput = document.getElementById('spinDurationSec');
+
+            if (customWheelConfig) {
+                segmentCountInput.value = customWheelConfig.segmentCount || 6;
+                namesTextarea.value = (customWheelConfig.texts || []).join(', ');
+                colorsInput.value = (customWheelConfig.colors || []).join(', ');
+                durationInput.value = (customWheelConfig.spinDurationMs / 1000) || 4;
+            } else {
+                segmentCountInput.value = 6;
+                namesTextarea.value = '';
+                colorsInput.value = '';
+                durationInput.value = 4;
+            }
+            configModal.style.display = 'flex';
+        });
+    }
+
+    if (saveConfigBtn) {
+        saveConfigBtn.addEventListener('click', () => {
+            let segmentCount = parseInt(document.getElementById('segmentCount').value, 10);
+            if (isNaN(segmentCount) || segmentCount < 1) segmentCount = 1;
+            if (segmentCount > 100) segmentCount = 100;
+
+            let namesRaw = document.getElementById('segmentNames').value;
+            let texts = namesRaw ? namesRaw.split(',').map(s => s.trim()) : [];
+            if (texts.length !== segmentCount) {
+                texts = [];
+                for (let i = 1; i <= segmentCount; i++) texts.push(`Сегмент ${i}`);
+            }
+
+            let colorsRaw = document.getElementById('segmentColors').value;
+            let colors = colorsRaw ? colorsRaw.split(',').map(s => s.trim()) : [];
+            if (colors.length !== segmentCount) {
+                colors = [];
+                for (let i = 0; i < segmentCount; i++) {
+                    const hue = (i * 360 / segmentCount) % 360;
+                    colors.push(`hsl(${hue}, 70%, 60%)`);
+                }
+            }
+
+            let durationSec = parseFloat(document.getElementById('spinDurationSec').value);
+            if (isNaN(durationSec)) durationSec = 4;
+            if (durationSec < 0.5) durationSec = 0.5;
+            if (durationSec > 100) durationSec = 100;
+            const spinDurationMs = durationSec * 1000;
+
+            const newConfig = {
+                segmentCount: segmentCount,
+                texts: texts,
+                colors: colors,
+                spinDurationMs: spinDurationMs,
+                minRotations: 3,
+                maxRotations: 7,
+                easing: "cubic-bezier(0.2, 0.8, 0.3, 1)"
+            };
+            saveCustomWheelConfig(newConfig);
+            createWheelNumbers();
+            configModal.style.display = 'none';
+            if (resetBtn) resetBtn.style.display = 'inline-block';
+        });
+    }
+
+    if (cancelConfigBtn) {
+        cancelConfigBtn.addEventListener('click', () => {
+            configModal.style.display = 'none';
+        });
+    }
+
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            resetToOriginalWheel();
+            configModal.style.display = 'none';
+        });
+    }
+
+    if (configModal) {
+        configModal.addEventListener('click', (e) => {
+            if (e.target === configModal) configModal.style.display = 'none';
+        });
+    }
 }
+
 function createWheelNumbers() {
     const wheel = document.getElementById('wheel');
     if (!wheel) return;
-    const segmentAngle = 360 / GAME_CONFIG.spinningWheel.segmentCount;
-    const existing = wheel.querySelectorAll('.segment-number');
-    existing.forEach(n => n.remove());
-    const numbers = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25];
-    for (let i = 0; i < GAME_CONFIG.spinningWheel.segmentCount; i++) {
+
+    let segmentCount = 23;
+    let texts = null;
+    let colors = null;
+
+    if (customWheelConfig && customWheelConfig.segmentCount) {
+        segmentCount = customWheelConfig.segmentCount;
+        texts = customWheelConfig.texts;
+        colors = customWheelConfig.colors;
+    } else {
+        texts = CLASSMATE_NAMES.slice(0, 23);
+        const defaultColors = ["#FF6B6B", "#4F90FF", "#4CAF50", "#FFD700"];
+        colors = [];
+        for (let i = 0; i < segmentCount; i++) {
+            colors.push(defaultColors[i % defaultColors.length]);
+        }
+    }
+
+    const segmentAngle = 360 / segmentCount;
+    const existingNumbers = wheel.querySelectorAll('.segment-number');
+    existingNumbers.forEach(n => n.remove());
+
+    let gradient = "conic-gradient(";
+    for (let i = 0; i < segmentCount; i++) {
+        const start = i * segmentAngle;
+        const end = (i + 1) * segmentAngle;
+        gradient += `${colors[i]} ${start}deg ${end}deg`;
+        if (i < segmentCount - 1) gradient += ", ";
+    }
+    gradient += ")";
+    wheel.style.background = gradient;
+
+    const radius = 150;
+    for (let i = 0; i < segmentCount; i++) {
         const div = document.createElement('div');
         div.className = 'segment-number';
-        div.textContent = numbers[i];
+        div.textContent = texts[i] || `#${i+1}`;
         const angle = (i * segmentAngle) + (segmentAngle / 2);
-        const radius = 150;
         const x = Math.cos((angle - 90) * Math.PI / 180) * radius;
         const y = Math.sin((angle - 90) * Math.PI / 180) * radius;
         div.style.position = 'absolute';
@@ -581,6 +954,7 @@ function createWheelNumbers() {
         wheel.appendChild(div);
     }
 }
+
 function spinWheel() {
     if (gameState.isSpinning) return;
     gameState.isSpinning = true;
@@ -591,27 +965,55 @@ function spinWheel() {
     const pointer = document.querySelector('.wheel-pointer');
     if (spinButton) spinButton.disabled = true;
     if (pointer) pointer.classList.add('spinning');
+
+    let segmentCount = 23;
+    let texts = null;
+    let minRot = 3;
+    let maxRot = 7;
+    let duration = 4000;
+    let easing = "cubic-bezier(0.2, 0.8, 0.3, 1)";
+
+    if (customWheelConfig && customWheelConfig.segmentCount) {
+        segmentCount = customWheelConfig.segmentCount;
+        texts = customWheelConfig.texts;
+        minRot = customWheelConfig.minRotations || 3;
+        maxRot = customWheelConfig.maxRotations || 7;
+        duration = customWheelConfig.spinDurationMs || 4000;
+        easing = customWheelConfig.easing || "cubic-bezier(0.2, 0.8, 0.3, 1)";
+    } else {
+        texts = CLASSMATE_NAMES;
+        segmentCount = 23;
+    }
+
     let targetSegment;
     if (wheel) {
         wheel.style.transition = 'none';
         wheel.style.transform = 'rotate(0deg)';
         void wheel.offsetWidth;
-        wheel.style.transition = 'transform 4s cubic-bezier(0.2,0.8,0.3,1)';
-        const fullRotations = GAME_CONFIG.spinningWheel.minRotations + Math.floor(Math.random() * (GAME_CONFIG.spinningWheel.maxRotations - GAME_CONFIG.spinningWheel.minRotations + 1));
-        const segmentAngle = 360 / GAME_CONFIG.spinningWheel.segmentCount;
-        targetSegment = Math.floor(Math.random() * GAME_CONFIG.spinningWheel.segmentCount);
+        wheel.style.transition = `transform ${duration}ms ${easing}`;
+
+        const fullRotations = minRot + Math.floor(Math.random() * (maxRot - minRot + 1));
+        const segmentAngle = 360 / segmentCount;
+        targetSegment = Math.floor(Math.random() * segmentCount);
         const segmentOffset = segmentAngle / 2;
         const targetRotation = (targetSegment * segmentAngle) + segmentOffset;
         const totalRotation = (fullRotations * 360) + targetRotation;
         wheel.style.transform = `rotate(${-totalRotation}deg)`;
     }
+
     setTimeout(() => {
         if (pointer) pointer.classList.remove('spinning');
-        const winner = CLASSMATE_NAMES[targetSegment];
+        let winner;
+        if (texts && texts[targetSegment]) {
+            winner = texts[targetSegment];
+        } else {
+            winner = `Сегмент ${targetSegment + 1}`;
+        }
         if (selectedName) selectedName.textContent = winner;
         if (resultModal) resultModal.style.display = 'flex';
-    }, 4000);
+    }, duration);
 }
+
 function resetSpinningWheel() {
     const wheel = document.getElementById('wheel');
     const resultModal = document.getElementById('resultModal');
@@ -622,7 +1024,7 @@ function resetSpinningWheel() {
     if (spinButton) spinButton.disabled = false;
     gameState.isSpinning = false;
     if (pointer) pointer.classList.remove('spinning');
-    if (wheel) { void wheel.offsetWidth; wheel.style.transition = 'transform 4s cubic-bezier(0.2,0.8,0.3,1)'; }
+    if (wheel) { void wheel.offsetWidth; wheel.style.transition = `transform ${customWheelConfig?.spinDurationMs || 4000}ms ${customWheelConfig?.easing || "cubic-bezier(0.2,0.8,0.3,1)"}`; }
 }
 
 // ============================================
@@ -826,50 +1228,86 @@ function checkAnswer(selected, correct) {
     selectedBtn.style.background = 'linear-gradient(135deg, #ffed4e, #ffd700)';
     selectedBtn.style.color = '#000066';
     selectedBtn.style.border = '3px solid #cc9900';
+
     setTimeout(() => {
         if (selected === correct) {
             let sound;
             if (gameState.currentQuestion === 4 || gameState.currentQuestion === 9) sound = 'correctAnswer3';
             else if (gameState.currentQuestion < 5) sound = 'correctAnswerSound';
             else sound = 'correctAnswer2';
-            selectedBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
-            selectedBtn.style.color = '#000066';
-            selectedBtn.style.border = '3px solid #00aa00';
-            playSound(sound);
-            setTimeout(() => {
-                const t = TRANSLATIONS[currentLanguage];
-                const prize = t?.prizes?.[gameState.currentQuestion] || `${(gameState.currentQuestion + 1) * 100} BGN`;
-                alert(`✅ Правилен отговор! Спечелихте ${prize}!`);
-                gameState.currentQuestion++;
-                if (gameState.currentQuestion < 15) {
-                    playSound('moveForwardSound');
-                    setTimeout(() => loadQuestion(), 1000);
-                } else {
-                    alert('🎉 ЧЕСТИТО! Спечелихте 100,000 BGN!');
-                    gameState.currentQuestion = 0;
-                    resetGame();
-                }
-            }, 3000);
+
+            if (currentTheme === 'Minecraft') {
+                setTimeout(() => {
+                    selectedBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
+                    selectedBtn.style.color = '#000066';
+                    selectedBtn.style.border = '3px solid #00aa00';
+                    playSound(sound);
+                    setTimeout(() => {
+                        const t = TRANSLATIONS[currentLanguage];
+                        const prize = t?.prizes?.[gameState.currentQuestion] || `${(gameState.currentQuestion + 1) * 100} BGN`;
+                        alert(`✅ Правилен отговор! Спечелихте ${prize}!`);
+                        gameState.currentQuestion++;
+                        if (gameState.currentQuestion < 15) {
+                            playSound('moveForwardSound');
+                            setTimeout(() => loadQuestion(), 1000);
+                        } else {
+                            alert('🎉 ЧЕСТИТО! Спечелихте 100,000 BGN!');
+                            gameState.currentQuestion = 0;
+                            resetGame();
+                        }
+                    }, 3000);
+                }, 750);
+            } else {
+                selectedBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
+                selectedBtn.style.color = '#000066';
+                selectedBtn.style.border = '3px solid #00aa00';
+                playSound(sound);
+                setTimeout(() => {
+                    const t = TRANSLATIONS[currentLanguage];
+                    const prize = t?.prizes?.[gameState.currentQuestion] || `${(gameState.currentQuestion + 1) * 100} BGN`;
+                    alert(`✅ Правилен отговор! Спечелихте ${prize}!`);
+                    gameState.currentQuestion++;
+                    if (gameState.currentQuestion < 15) {
+                        playSound('moveForwardSound');
+                        setTimeout(() => loadQuestion(), 1000);
+                    } else {
+                        alert('🎉 ЧЕСТИТО! Спечелихте 100,000 BGN!');
+                        gameState.currentQuestion = 0;
+                        resetGame();
+                    }
+                }, 3000);
+            }
         } else {
+            // Wrong answer
             if (correctBtn) {
                 correctBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
                 correctBtn.style.color = '#000066';
                 correctBtn.style.border = '3px solid #00aa00';
             }
             playSound('wrongAnswerSound');
-            setTimeout(() => {
-                const t = TRANSLATIONS[currentLanguage];
-                const prize = gameState.currentQuestion > 0 ? (t?.prizes?.[gameState.currentQuestion - 1] || `${gameState.currentQuestion * 100} BGN`) : 'нищо';
-                alert(`❌ Грешен отговор! Играта свърши. Спечелихте: ${prize}`);
-                gameState.currentQuestion = 0;
-                resetGame();
-            }, 3000);
+
+            if (currentTheme === 'Minecraft') {
+                setTimeout(() => {
+                    showMinecraftDeathScreen();
+                }, 500);
+                // No alert for Minecraft theme
+            } else {
+                setTimeout(() => {
+                    const t = TRANSLATIONS[currentLanguage];
+                    const prize = gameState.currentQuestion > 0 ? (t?.prizes?.[gameState.currentQuestion - 1] || `${gameState.currentQuestion * 100} BGN`) : 'нищо';
+                    alert(`❌ Грешен отговор! Играта свърши. Спечелихте: ${prize}`);
+                    gameState.currentQuestion = 0;
+                    resetGame();
+                }, 3000);
+            }
         }
     }, 2500);
 }
+
 function resetGame() {
     gameState.usedJokers = { fiftyFifty: false, audience: false, phone: false };
     document.querySelectorAll('.joker-btn').forEach(btn => { btn.disabled = false; btn.classList.remove('used'); });
+    removeDeathZoom();
     setTimeout(loadQuestion, 1000);
 }
 
@@ -878,8 +1316,7 @@ function resetGame() {
 // ============================================
 document.addEventListener('DOMContentLoaded', function () {
     console.log("=== GAME INITIALIZATION STARTED ===");
-    // Optional intro video – comment out if you don't have the video element
-    // playIntroVideo();
+    // playIntroVideo(); // uncomment if you have intro video
 
     const startBtn = document.getElementById('startButton');
     const tutorialBtn = document.getElementById('tutorialButton');
@@ -918,3 +1355,4 @@ document.addEventListener('DOMContentLoaded', function () {
         console.error("CRITICAL ERROR during initialization:", err);
         alert("Възникна грешка при инициализация.");
     }
+});
