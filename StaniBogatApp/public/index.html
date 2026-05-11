@@ -40,12 +40,21 @@
     </div>
 </div>
 
+<!-- CATEGORY SELECTION SCREEN -->
+<div id="categorySelectionScreen" class="category-selection-screen" style="display: none;">
+    <div class="category-selection-content">
+        <h2 class="category-selection-title">Изберете категория</h2>
+        <div class="category-buttons-container"></div>
+        <button id="backFromCategoryButton" class="back-button">← Назад към началния екран</button>
+    </div>
+</div>
+
 <!-- THEME SELECTION SCREEN -->
 <div id="themeSelectionScreen" class="theme-selection-screen" style="display: none;">
     <div class="theme-selection-content">
         <h2 class="theme-selection-title">Изберете тема</h2>
         <div class="theme-buttons-container"></div>
-        <button id="backFromThemeButton" class="back-button">← Назад към началния екран</button>
+        <button id="backFromThemeButton" class="back-button">← Назад към категории</button>
     </div>
 </div>
 
@@ -219,21 +228,7 @@
         <button class="joker-btn" id="jokerAudience" onclick="useAudience()"><span class="joker-text">👥 Публика</span></button>
         <button class="joker-btn" id="jokerPhone" onclick="usePhone()"><span class="joker-text">📞 Телефон</span></button>
     </div>
-    <div class="money-item">15. 100,000 лв</div>
-    <div class="money-item">14. 50,000 лв</div>
-    <div class="money-item">13. 30,000 лв</div>
-    <div class="money-item">12. 20,000 лв</div>
-    <div class="money-item">11. 10,000 лв</div>
-    <div class="money-item">10. 5,000 лв</div>
-    <div class="money-item">9. 3,000 лв</div>
-    <div class="money-item">8. 2,000 лв</div>
-    <div class="money-item">7. 1,500 лв</div>
-    <div class="money-item">6. 1,000 лв</div>
-    <div class="money-item">5. 500 лв</div>
-    <div class="money-item">4. 400 лв</div>
-    <div class="money-item">3. 300 лв</div>
-    <div class="money-item">2. 200 лв</div>
-    <div class="money-item">1. 100 лв</div>
+    <!-- money items will be generated dynamically -->
 </div>
 
 <!-- JOKER MODALS -->
@@ -266,7 +261,7 @@
 <!-- JavaScript includes (order matters) -->
 <script src="js/translations.js"></script>
 <script src="js/questions-data.js?v=4"></script>
-<script src="js/Game.js?v=5"></script>
+<script src="js/Game.js?v=6"></script>
 <script>
     // Quick verification that questions data loaded
     (function() {
