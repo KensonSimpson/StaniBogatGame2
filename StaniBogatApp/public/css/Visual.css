@@ -121,6 +121,94 @@ body {
     transform: scale(1.15);
 }
 
+/* =================== CATEGORY SELECTION =================== */
+.category-selection-screen {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: url('/images/StaniBogatBackground.jpg') no-repeat center center;
+    background-size: cover;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 3000;
+    padding: 20px;
+    box-sizing: border-box;
+}
+.category-selection-screen::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: -1;
+}
+.category-selection-content {
+    background: var(--dark-bg);
+    padding: 40px;
+    border: 5px solid var(--gold-color);
+    border-radius: 20px;
+    max-width: 600px;
+    width: 90%;
+    color: white;
+    text-align: center;
+    box-shadow: 0 0 40px rgba(255,215,0,0.6);
+    animation: slideInLeft 0.5s ease-out;
+    z-index: 2;
+}
+.category-selection-title {
+    color: var(--gold-color);
+    font-size: 32px;
+    margin-bottom: 30px;
+    text-transform: uppercase;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+.category-buttons-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 30px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+.category-btn {
+    background: var(--primary-blue);
+    color: white;
+    border: 3px solid var(--gold-color);
+    padding: 18px 25px;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 0 15px rgba(255,215,0,0.5);
+}
+.category-btn:hover {
+    background: linear-gradient(135deg, #2e58ff, #4f90ff);
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(255,215,0,0.7);
+}
+#backFromCategoryButton {
+    background: var(--primary-blue);
+    color: white;
+    border: 3px solid var(--gold-color);
+    padding: 15px 30px;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 10px;
+    width: 100%;
+    box-shadow: 0 0 15px rgba(255,215,0,0.5);
+}
+#backFromCategoryButton:hover {
+    background: linear-gradient(135deg, #2e58ff, #4f90ff);
+    transform: scale(1.05);
+}
+
 /* =================== THEME SELECTION =================== */
 .theme-selection-screen {
     position: fixed;
