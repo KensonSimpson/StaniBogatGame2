@@ -6,15 +6,15 @@ const THEME_CATEGORIES = {
     "Super Mario": "games",
     "Geometry Dash": "games",
     "Baldi's Basics": "games",
-    "Шах": "games",
+    "Шах": "boardgames",         // moved to Настолни игри
     "Математика": "education",
     "БЕЛ": "education",
     "Руски език": "education",
-    "Databases": "education",
+    "Databases": "it",           // moved to ИТ
     "Стани Богат": "education",
     "Общи знания": "general",
     "Movies": "general",
-    "Holidays": "general",
+    "Holidays": "holidays",      // moved to Празници
     "Спорт": "sports",
     "Листовки": "special"
 };
@@ -24,7 +24,10 @@ const CATEGORY_NAMES = {
     "education": "Образование",
     "general": "Общи",
     "sports": "Спорт",
-    "special": "Специални"
+    "special": "Специални",
+    "boardgames": "Настолни игри",
+    "it": "ИТ",
+    "holidays": "Празници"
 };
 
 // ============================================
