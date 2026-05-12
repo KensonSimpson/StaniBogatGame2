@@ -6,15 +6,15 @@ const THEME_CATEGORIES = {
     "Super Mario": "games",
     "Geometry Dash": "games",
     "Baldi's Basics": "games",
-    "Шах": "boardgames",         // moved to Настолни игри
+    "Шах": "boardgames",
     "Математика": "education",
     "БЕЛ": "education",
     "Руски език": "education",
-    "Databases": "it",           // moved to ИТ
+    "Databases": "it",
     "Стани Богат": "education",
     "Общи знания": "general",
     "Movies": "general",
-    "Holidays": "holidays",      // moved to Празници
+    "Holidays": "holidays",
     "Спорт": "sports",
     "Листовки": "special"
 };
@@ -36,11 +36,10 @@ const CATEGORY_NAMES = {
 const THEME_CONFIG = {
     "Листовки": {
         totalQuestions: 45,
-        showPrizes: false,         // no prize amounts
-        milestones: [9, 19, 29, 39], // play correctAnswer3 at these indices
-        moneyTreeLabel: (index) => (index + 1) + "."   // e.g., "1.", "2.", ...
+        showPrizes: false,
+        milestones: [9, 19, 29, 39],
+        moneyTreeLabel: (index) => (index + 1) + "."
     }
-    // other themes can be added later
 };
 
 // ============================================
@@ -89,10 +88,10 @@ let settings = {
 let currentLanguage = 'bg';
 let currentTheme = null;
 let currentThemeQuestions = null;
-let currentTotalQuestions = 15;   // will be set per theme
+let currentTotalQuestions = 15;
 
 // ============================================
-// BACKGROUND WRAPPER (ONLY ONE BACKGROUND)
+// BACKGROUND WRAPPER
 // ============================================
 const bgWrapper = document.getElementById('backgroundWrapper');
 const DEFAULT_BACKGROUND = '/images/StaniBogatBackground.jpg';
@@ -111,7 +110,6 @@ function setThemeBackground(themeKey) {
         }
     }
     bgWrapper.style.backgroundImage = `url('${bgImage}')`;
-    // Remove any inline background from body
     document.body.style.backgroundImage = 'none';
 }
 
@@ -145,14 +143,12 @@ function playThemeMusic(themeKey) {
             music.loop = true;
             music.play().catch(e => console.log("Theme music play failed:", e));
             currentThemeMusic = music;
-        } else {
-            console.error("minecraftMusic element not found!");
         }
     }
 }
 
 // ============================================
-// MINECRAFT CLICK SOUND (global)
+// MINECRAFT CLICK SOUND
 // ============================================
 function playMinecraftClick() {
     if (currentTheme !== 'Minecraft') return;
@@ -187,7 +183,7 @@ function removeMinecraftClickSound() {
 }
 
 // ============================================
-// MINECRAFT THEME (logo, container, click sound)
+// MINECRAFT THEME
 // ============================================
 function applyMinecraftTheme() {
     const gameContainer = document.getElementById('gameContainer');
@@ -235,7 +231,7 @@ function removeMinecraftTheme() {
 }
 
 // ============================================
-// MINECRAFT DEATH SCREEN (ZOOM & ROTATE)
+// MINECRAFT DEATH SCREEN
 // ============================================
 function applyDeathZoom() {
     const gameContainer = document.getElementById('gameContainer');
@@ -243,7 +239,7 @@ function applyDeathZoom() {
     if (gameContainer) gameContainer.classList.add('death-zoom');
     if (bgWrapper) {
         bgWrapper.classList.add('death-zoom');
-        void bgWrapper.offsetWidth; // force reflow
+        void bgWrapper.offsetWidth;
     }
 }
 
@@ -258,7 +254,6 @@ function showMinecraftDeathScreen() {
     const deathScreen = document.getElementById('minecraftDeathScreen');
     if (!deathScreen) return;
     
-    // Play damage sound
     const damageSound = document.getElementById('minecraftDamageSound');
     if (damageSound) {
         damageSound.currentTime = 0;
@@ -277,6 +272,7 @@ function showMinecraftDeathScreen() {
             gameState.currentQuestion = 0;
             gameState.usedJokers = { fiftyFifty: false, audience: false, phone: false };
             document.querySelectorAll('.joker-btn').forEach(b => { b.disabled = false; b.classList.remove('used'); });
+            clearTimeout(gameState.answerRevealTimeout);
             loadQuestion();
         };
     }
@@ -289,45 +285,6 @@ function showMinecraftDeathScreen() {
             document.getElementById('gameBackButton').click();
         };
     }
-}
-
-// ============================================
-// INTRO VIDEO (optional)
-// ============================================
-function playIntroVideo() {
-    const videoContainer = document.getElementById('introVideo');
-    const videoPlayer = document.getElementById('introVideoPlayer');
-    const skipButton = document.getElementById('skipIntro');
-    if (!videoContainer || !videoPlayer) {
-        console.log("Video elements not found, skipping intro");
-        return;
-    }
-    console.log("Playing intro video...");
-    videoContainer.style.display = 'flex';
-    if (skipButton) {
-        skipButton.addEventListener('click', function () {
-            console.log("Video skipped");
-            videoContainer.style.display = 'none';
-            videoPlayer.pause();
-        });
-    }
-    videoPlayer.addEventListener('ended', function () {
-        console.log("Video ended");
-        videoContainer.style.display = 'none';
-    });
-    videoPlayer.play().catch(error => {
-        console.log("Video autoplay prevented:", error);
-        if (skipButton) {
-            skipButton.textContent = "► Пусни видеото";
-            skipButton.style.background = "rgba(255, 215, 0, 0.8)";
-        }
-    });
-    videoContainer.addEventListener('click', function (event) {
-        if (event.target === videoContainer || event.target === videoPlayer) {
-            videoContainer.style.display = 'none';
-            videoPlayer.pause();
-        }
-    });
 }
 
 // ============================================
@@ -410,7 +367,7 @@ function generateMoneyTree(themeKey) {
 }
 
 // ============================================
-// LANGUAGE SYSTEM (with theme support)
+// LANGUAGE SYSTEM
 // ============================================
 function initLanguageSystem() {
     const savedLang = localStorage.getItem('staniBogatLanguage');
@@ -428,7 +385,6 @@ function initLanguageSystem() {
 
 function changeLanguage(lang) {
     if (!LANGUAGE_CONFIG.available.includes(lang)) return;
-    console.log("Changing language to:", lang);
     document.querySelectorAll('.language-btn').forEach(btn => {
         btn.classList.remove('active');
         if (btn.getAttribute('data-lang') === lang) {
@@ -490,7 +446,7 @@ function loadThemeQuestions(themeKey) {
 }
 
 // ============================================
-// SETTINGS (full original)
+// SETTINGS
 // ============================================
 function initializeSettings() {
     const settingsButton = document.getElementById('settingsButton');
@@ -619,7 +575,7 @@ function resetToDefaultSettings() {
 }
 
 // ============================================
-// MONEY TREE TOGGLE (updated to work with dynamic tree)
+// MONEY TREE TOGGLE
 // ============================================
 function initializeMoneyTreeToggle() {
     const toggle = document.getElementById('moneyTreeToggle');
@@ -679,8 +635,8 @@ function initializeStartMenu() {
     const themeScreen = document.getElementById('themeSelectionScreen');
     const backFromTheme = document.getElementById('backFromThemeButton');
     const themeButtonsContainer = document.querySelector('.theme-buttons-container');
+    const saveCloudBtn = document.getElementById('saveCloudBtn');
 
-    // Build category buttons
     if (categoryButtonsContainer && Object.keys(CATEGORY_NAMES).length > 0) {
         categoryButtonsContainer.innerHTML = '';
         for (const [catKey, catName] of Object.entries(CATEGORY_NAMES)) {
@@ -692,7 +648,6 @@ function initializeStartMenu() {
         }
     }
 
-    // Start button -> show category selection
     if (startButton) {
         startButton.addEventListener('click', () => {
             performTransition(() => {
@@ -704,14 +659,12 @@ function initializeStartMenu() {
         console.error("CRITICAL: Start button not found!");
     }
 
-    // Category button -> show only themes of that category
     document.querySelectorAll('.category-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const catKey = btn.getAttribute('data-category');
             performTransition(() => {
                 categoryScreen.style.display = 'none';
                 themeScreen.style.display = 'flex';
-                // Populate theme buttons filtered
                 if (themeButtonsContainer) {
                     themeButtonsContainer.innerHTML = '';
                     for (const themeKey in QUESTIONS_DATA) {
@@ -731,7 +684,6 @@ function initializeStartMenu() {
         });
     });
 
-    // Back from category screen
     if (backFromCategory) {
         backFromCategory.addEventListener('click', () => {
             performTransition(() => {
@@ -741,7 +693,6 @@ function initializeStartMenu() {
         });
     }
 
-    // Back from theme screen -> back to category
     if (backFromTheme) {
         backFromTheme.addEventListener('click', () => {
             performTransition(() => {
@@ -751,7 +702,6 @@ function initializeStartMenu() {
         });
     }
 
-    // Function to start the game after theme is selected
     function startGameWithTheme(themeKey) {
         if (!loadThemeQuestions(themeKey)) {
             alert("Темата няма въпроси. Опитайте друга.");
@@ -762,6 +712,7 @@ function initializeStartMenu() {
         gameState.currentQuestion = 0;
         gameState.usedJokers = { fiftyFifty: false, audience: false, phone: false };
         document.querySelectorAll('.joker-btn').forEach(b => { b.disabled = false; b.classList.remove('used'); });
+        clearTimeout(gameState.answerRevealTimeout); // FIX: prevent leftover timeout
         performTransition(() => {
             themeScreen.style.display = 'none';
             gameContainer.style.display = 'block';
@@ -775,6 +726,7 @@ function initializeStartMenu() {
             gameContainer.classList.remove('narrow');
             moneyTreeToggle.innerHTML = '💰';
             gameState.isMoneyTreeVisible = false;
+            if (saveCloudBtn) saveCloudBtn.style.display = 'inline-block';  // show save button
             setTimeout(() => updateGameContainerResponsiveness(), 100);
             stopRetroMusic();
             setThemeBackground(themeKey);
@@ -789,7 +741,6 @@ function initializeStartMenu() {
         });
     }
 
-    // Game Back Button
     if (gameBack) {
         gameBack.addEventListener('click', () => {
             console.log("Game back button clicked");
@@ -800,12 +751,14 @@ function initializeStartMenu() {
                 if (backButtonContainer) backButtonContainer.style.display = 'none';
                 gameBack.style.display = 'none';
                 if (moneyTreeToggle) moneyTreeToggle.style.display = 'none';
-                categoryScreen.style.display = 'flex'; // back to categories
+                if (saveCloudBtn) saveCloudBtn.style.display = 'none';  // hide save button
+                categoryScreen.style.display = 'flex';
                 gameState.currentQuestion = 0;
                 gameState.usedJokers = { fiftyFifty: false, audience: false, phone: false };
                 document.querySelectorAll('.joker-btn').forEach(b => { b.disabled = false; b.classList.remove('used'); });
                 currentTheme = null;
                 currentThemeQuestions = null;
+                clearTimeout(gameState.answerRevealTimeout);  // clear any pending reveal
                 resetToDefaultBackground();
                 stopThemeMusic();
                 removeMinecraftTheme();
@@ -814,7 +767,6 @@ function initializeStartMenu() {
         });
     }
 
-    // Tutorial button
     if (tutorialButton) {
         tutorialButton.addEventListener('click', () => {
             performTransition(() => {
@@ -827,7 +779,6 @@ function initializeStartMenu() {
         console.error("Tutorial button not found!");
     }
 
-    // Spinning Wheel button
     if (spinningWheelButton) {
         spinningWheelButton.addEventListener('click', () => {
             performTransition(() => {
@@ -840,7 +791,6 @@ function initializeStartMenu() {
         console.error("Spinning Wheel button not found!");
     }
 
-    // Back button from tutorial
     if (backButton) {
         backButton.addEventListener('click', () => {
             performTransition(() => {
@@ -850,7 +800,6 @@ function initializeStartMenu() {
         });
     }
 
-    // Back button from spinning wheel
     if (backFromWheel) {
         backFromWheel.addEventListener('click', () => {
             performTransition(() => {
@@ -864,30 +813,19 @@ function initializeStartMenu() {
 }
 
 // ============================================
-// SPINNING WHEEL (with custom support)
+// SPINNING WHEEL (unchanged)
 // ============================================
 let customWheelConfig = null;
 
 function loadCustomWheelConfig() {
-    try {
-        const saved = localStorage.getItem('staniBogatCustomWheel');
-        if (saved) customWheelConfig = JSON.parse(saved);
-    } catch(e) { console.error("Failed to load custom wheel config", e); }
+    try { const saved = localStorage.getItem('staniBogatCustomWheel'); if (saved) customWheelConfig = JSON.parse(saved); } catch(e) { console.error("Failed to load custom wheel config", e); }
 }
-
 function saveCustomWheelConfig(config) {
-    try {
-        localStorage.setItem('staniBogatCustomWheel', JSON.stringify(config));
-        customWheelConfig = config;
-    } catch(e) { console.error("Failed to save custom wheel config", e); }
+    try { localStorage.setItem('staniBogatCustomWheel', JSON.stringify(config)); customWheelConfig = config; } catch(e) { console.error("Failed to save custom wheel config", e); }
 }
-
 function resetToOriginalWheel() {
-    localStorage.removeItem('staniBogatCustomWheel');
-    customWheelConfig = null;
-    createWheelNumbers();
-    const resetBtn = document.getElementById('resetWheelButton');
-    if (resetBtn) resetBtn.style.display = 'none';
+    localStorage.removeItem('staniBogatCustomWheel'); customWheelConfig = null; createWheelNumbers();
+    const resetBtn = document.getElementById('resetWheelButton'); if (resetBtn) resetBtn.style.display = 'none';
 }
 
 function initializeSpinningWheel() {
@@ -903,22 +841,11 @@ function initializeSpinningWheel() {
     loadCustomWheelConfig();
     createWheelNumbers();
 
-    if (customWheelConfig) {
-        if (resetBtn) resetBtn.style.display = 'inline-block';
-    } else {
-        if (resetBtn) resetBtn.style.display = 'none';
-    }
+    if (customWheelConfig) { if (resetBtn) resetBtn.style.display = 'inline-block'; }
+    else { if (resetBtn) resetBtn.style.display = 'none'; }
 
-    if (spinButton) {
-        spinButton.addEventListener('click', () => { if (!gameState.isSpinning) spinWheel(); });
-    }
-    if (spinAgain) {
-        spinAgain.addEventListener('click', () => {
-            if (resultModal) resultModal.style.display = 'none';
-            if (spinButton) spinButton.disabled = false;
-            gameState.isSpinning = false;
-        });
-    }
+    if (spinButton) { spinButton.addEventListener('click', () => { if (!gameState.isSpinning) spinWheel(); }); }
+    if (spinAgain) { spinAgain.addEventListener('click', () => { if (resultModal) resultModal.style.display = 'none'; if (spinButton) spinButton.disabled = false; gameState.isSpinning = false; }); }
 
     if (customizeBtn) {
         customizeBtn.addEventListener('click', () => {
@@ -926,17 +853,13 @@ function initializeSpinningWheel() {
             const namesTextarea = document.getElementById('segmentNames');
             const colorsInput = document.getElementById('segmentColors');
             const durationInput = document.getElementById('spinDurationSec');
-
             if (customWheelConfig) {
                 segmentCountInput.value = customWheelConfig.segmentCount || 6;
                 namesTextarea.value = (customWheelConfig.texts || []).join(', ');
                 colorsInput.value = (customWheelConfig.colors || []).join(', ');
                 durationInput.value = (customWheelConfig.spinDurationMs / 1000) || 4;
             } else {
-                segmentCountInput.value = 6;
-                namesTextarea.value = '';
-                colorsInput.value = '';
-                durationInput.value = 4;
+                segmentCountInput.value = 6; namesTextarea.value = ''; colorsInput.value = ''; durationInput.value = 4;
             }
             configModal.style.display = 'flex';
         });
@@ -947,39 +870,16 @@ function initializeSpinningWheel() {
             let segmentCount = parseInt(document.getElementById('segmentCount').value, 10);
             if (isNaN(segmentCount) || segmentCount < 1) segmentCount = 1;
             if (segmentCount > 100) segmentCount = 100;
-
             let namesRaw = document.getElementById('segmentNames').value;
             let texts = namesRaw ? namesRaw.split(',').map(s => s.trim()) : [];
-            if (texts.length !== segmentCount) {
-                texts = [];
-                for (let i = 1; i <= segmentCount; i++) texts.push(`Сегмент ${i}`);
-            }
-
+            if (texts.length !== segmentCount) { texts = []; for (let i = 1; i <= segmentCount; i++) texts.push(`Сегмент ${i}`); }
             let colorsRaw = document.getElementById('segmentColors').value;
             let colors = colorsRaw ? colorsRaw.split(',').map(s => s.trim()) : [];
-            if (colors.length !== segmentCount) {
-                colors = [];
-                for (let i = 0; i < segmentCount; i++) {
-                    const hue = (i * 360 / segmentCount) % 360;
-                    colors.push(`hsl(${hue}, 70%, 60%)`);
-                }
-            }
-
+            if (colors.length !== segmentCount) { colors = []; for (let i = 0; i < segmentCount; i++) { const hue = (i * 360 / segmentCount) % 360; colors.push(`hsl(${hue}, 70%, 60%)`); } }
             let durationSec = parseFloat(document.getElementById('spinDurationSec').value);
-            if (isNaN(durationSec)) durationSec = 4;
-            if (durationSec < 0.5) durationSec = 0.5;
-            if (durationSec > 100) durationSec = 100;
+            if (isNaN(durationSec)) durationSec = 4; if (durationSec < 0.5) durationSec = 0.5; if (durationSec > 100) durationSec = 100;
             const spinDurationMs = durationSec * 1000;
-
-            const newConfig = {
-                segmentCount: segmentCount,
-                texts: texts,
-                colors: colors,
-                spinDurationMs: spinDurationMs,
-                minRotations: 3,
-                maxRotations: 7,
-                easing: "cubic-bezier(0.2, 0.8, 0.3, 1)"
-            };
+            const newConfig = { segmentCount, texts, colors, spinDurationMs, minRotations: 3, maxRotations: 7, easing: "cubic-bezier(0.2, 0.8, 0.3, 1)" };
             saveCustomWheelConfig(newConfig);
             createWheelNumbers();
             configModal.style.display = 'none';
@@ -987,156 +887,57 @@ function initializeSpinningWheel() {
         });
     }
 
-    if (cancelConfigBtn) {
-        cancelConfigBtn.addEventListener('click', () => {
-            configModal.style.display = 'none';
-        });
-    }
-
-    if (resetBtn) {
-        resetBtn.addEventListener('click', () => {
-            resetToOriginalWheel();
-            configModal.style.display = 'none';
-        });
-    }
-
-    if (configModal) {
-        configModal.addEventListener('click', (e) => {
-            if (e.target === configModal) configModal.style.display = 'none';
-        });
-    }
+    if (cancelConfigBtn) { cancelConfigBtn.addEventListener('click', () => { configModal.style.display = 'none'; }); }
+    if (resetBtn) { resetBtn.addEventListener('click', () => { resetToOriginalWheel(); configModal.style.display = 'none'; }); }
+    if (configModal) { configModal.addEventListener('click', (e) => { if (e.target === configModal) configModal.style.display = 'none'; }); }
 }
 
 function createWheelNumbers() {
-    const wheel = document.getElementById('wheel');
-    if (!wheel) return;
-
-    let segmentCount = 23;
-    let texts = null;
-    let colors = null;
-
+    const wheel = document.getElementById('wheel'); if (!wheel) return;
+    let segmentCount = 23; let texts = null; let colors = null;
     if (customWheelConfig && customWheelConfig.segmentCount) {
-        segmentCount = customWheelConfig.segmentCount;
-        texts = customWheelConfig.texts;
-        colors = customWheelConfig.colors;
+        segmentCount = customWheelConfig.segmentCount; texts = customWheelConfig.texts; colors = customWheelConfig.colors;
     } else {
-        texts = CLASSMATE_NAMES.slice(0, 23);
-        const defaultColors = ["#FF6B6B", "#4F90FF", "#4CAF50", "#FFD700"];
-        colors = [];
-        for (let i = 0; i < segmentCount; i++) {
-            colors.push(defaultColors[i % defaultColors.length]);
-        }
+        texts = CLASSMATE_NAMES.slice(0, 23); const defaultColors = ["#FF6B6B", "#4F90FF", "#4CAF50", "#FFD700"]; colors = []; for (let i = 0; i < segmentCount; i++) colors.push(defaultColors[i % defaultColors.length]);
     }
-
     const segmentAngle = 360 / segmentCount;
-    const existingNumbers = wheel.querySelectorAll('.segment-number');
-    existingNumbers.forEach(n => n.remove());
-
-    let gradient = "conic-gradient(";
-    for (let i = 0; i < segmentCount; i++) {
-        const start = i * segmentAngle;
-        const end = (i + 1) * segmentAngle;
-        gradient += `${colors[i]} ${start}deg ${end}deg`;
-        if (i < segmentCount - 1) gradient += ", ";
-    }
-    gradient += ")";
+    const existingNumbers = wheel.querySelectorAll('.segment-number'); existingNumbers.forEach(n => n.remove());
+    let gradient = "conic-gradient("; for (let i = 0; i < segmentCount; i++) { const start = i * segmentAngle; const end = (i + 1) * segmentAngle; gradient += `${colors[i]} ${start}deg ${end}deg`; if (i < segmentCount - 1) gradient += ", "; } gradient += ")";
     wheel.style.background = gradient;
-
     const radius = 150;
     for (let i = 0; i < segmentCount; i++) {
-        const div = document.createElement('div');
-        div.className = 'segment-number';
-        div.textContent = texts[i] || `#${i+1}`;
-        const angle = (i * segmentAngle) + (segmentAngle / 2);
-        const x = Math.cos((angle - 90) * Math.PI / 180) * radius;
-        const y = Math.sin((angle - 90) * Math.PI / 180) * radius;
-        div.style.position = 'absolute';
-        div.style.left = `calc(50% + ${x}px)`;
-        div.style.top = `calc(50% + ${y}px)`;
-        div.style.transform = 'translate(-50%, -50%)';
-        div.style.color = 'white';
-        div.style.fontWeight = 'bold';
-        div.style.fontSize = '16px';
-        div.style.textShadow = '1px 1px 2px rgba(0,0,0,0.8)';
-        div.style.zIndex = '2';
+        const div = document.createElement('div'); div.className = 'segment-number'; div.textContent = texts[i] || `#${i+1}`;
+        const angle = (i * segmentAngle) + (segmentAngle / 2); const x = Math.cos((angle - 90) * Math.PI / 180) * radius; const y = Math.sin((angle - 90) * Math.PI / 180) * radius;
+        div.style.position = 'absolute'; div.style.left = `calc(50% + ${x}px)`; div.style.top = `calc(50% + ${y}px)`; div.style.transform = 'translate(-50%, -50%)';
+        div.style.color = 'white'; div.style.fontWeight = 'bold'; div.style.fontSize = '16px'; div.style.textShadow = '1px 1px 2px rgba(0,0,0,0.8)'; div.style.zIndex = '2';
         wheel.appendChild(div);
     }
 }
 
 function spinWheel() {
-    if (gameState.isSpinning) return;
-    gameState.isSpinning = true;
-    const wheel = document.getElementById('wheel');
-    const spinButton = document.getElementById('spinButton');
-    const resultModal = document.getElementById('resultModal');
-    const selectedName = document.getElementById('selectedName');
-    const pointer = document.querySelector('.wheel-pointer');
-    if (spinButton) spinButton.disabled = true;
-    if (pointer) pointer.classList.add('spinning');
-
-    let segmentCount = 23;
-    let texts = null;
-    let minRot = 3;
-    let maxRot = 7;
-    let duration = 4000;
-    let easing = "cubic-bezier(0.2, 0.8, 0.3, 1)";
-
-    if (customWheelConfig && customWheelConfig.segmentCount) {
-        segmentCount = customWheelConfig.segmentCount;
-        texts = customWheelConfig.texts;
-        minRot = customWheelConfig.minRotations || 3;
-        maxRot = customWheelConfig.maxRotations || 7;
-        duration = customWheelConfig.spinDurationMs || 4000;
-        easing = customWheelConfig.easing || "cubic-bezier(0.2, 0.8, 0.3, 1)";
-    } else {
-        texts = CLASSMATE_NAMES;
-        segmentCount = 23;
-    }
-
+    if (gameState.isSpinning) return; gameState.isSpinning = true;
+    const wheel = document.getElementById('wheel'); const spinButton = document.getElementById('spinButton'); const resultModal = document.getElementById('resultModal'); const selectedName = document.getElementById('selectedName'); const pointer = document.querySelector('.wheel-pointer');
+    if (spinButton) spinButton.disabled = true; if (pointer) pointer.classList.add('spinning');
+    let segmentCount = 23; let texts = null; let minRot = 3; let maxRot = 7; let duration = 4000; let easing = "cubic-bezier(0.2, 0.8, 0.3, 1)";
+    if (customWheelConfig && customWheelConfig.segmentCount) { segmentCount = customWheelConfig.segmentCount; texts = customWheelConfig.texts; minRot = customWheelConfig.minRotations || 3; maxRot = customWheelConfig.maxRotations || 7; duration = customWheelConfig.spinDurationMs || 4000; easing = customWheelConfig.easing || easing; }
+    else { texts = CLASSMATE_NAMES; segmentCount = 23; }
     let targetSegment;
     if (wheel) {
-        wheel.style.transition = 'none';
-        wheel.style.transform = 'rotate(0deg)';
-        void wheel.offsetWidth;
-        wheel.style.transition = `transform ${duration}ms ${easing}`;
-
-        const fullRotations = minRot + Math.floor(Math.random() * (maxRot - minRot + 1));
-        const segmentAngle = 360 / segmentCount;
-        targetSegment = Math.floor(Math.random() * segmentCount);
-        const segmentOffset = segmentAngle / 2;
-        const targetRotation = (targetSegment * segmentAngle) + segmentOffset;
-        const totalRotation = (fullRotations * 360) + targetRotation;
+        wheel.style.transition = 'none'; wheel.style.transform = 'rotate(0deg)'; void wheel.offsetWidth; wheel.style.transition = `transform ${duration}ms ${easing}`;
+        const fullRotations = minRot + Math.floor(Math.random() * (maxRot - minRot + 1)); const segmentAngle = 360 / segmentCount; targetSegment = Math.floor(Math.random() * segmentCount); const segmentOffset = segmentAngle / 2; const targetRotation = (targetSegment * segmentAngle) + segmentOffset; const totalRotation = (fullRotations * 360) + targetRotation;
         wheel.style.transform = `rotate(${-totalRotation}deg)`;
     }
-
-    setTimeout(() => {
-        if (pointer) pointer.classList.remove('spinning');
-        let winner;
-        if (texts && texts[targetSegment]) {
-            winner = texts[targetSegment];
-        } else {
-            winner = `Сегмент ${targetSegment + 1}`;
-        }
-        if (selectedName) selectedName.textContent = winner;
-        if (resultModal) resultModal.style.display = 'flex';
-    }, duration);
+    setTimeout(() => { if (pointer) pointer.classList.remove('spinning'); let winner = texts && texts[targetSegment] ? texts[targetSegment] : `Сегмент ${targetSegment + 1}`; if (selectedName) selectedName.textContent = winner; if (resultModal) resultModal.style.display = 'flex'; }, duration);
 }
 
 function resetSpinningWheel() {
-    const wheel = document.getElementById('wheel');
-    const resultModal = document.getElementById('resultModal');
-    const spinButton = document.getElementById('spinButton');
-    const pointer = document.querySelector('.wheel-pointer');
-    if (wheel) { wheel.style.transition = 'none'; wheel.style.transform = 'rotate(0deg)'; }
-    if (resultModal) resultModal.style.display = 'none';
-    if (spinButton) spinButton.disabled = false;
-    gameState.isSpinning = false;
-    if (pointer) pointer.classList.remove('spinning');
+    const wheel = document.getElementById('wheel'); const resultModal = document.getElementById('resultModal'); const spinButton = document.getElementById('spinButton'); const pointer = document.querySelector('.wheel-pointer');
+    if (wheel) { wheel.style.transition = 'none'; wheel.style.transform = 'rotate(0deg)'; } if (resultModal) resultModal.style.display = 'none'; if (spinButton) spinButton.disabled = false; gameState.isSpinning = false; if (pointer) pointer.classList.remove('spinning');
     if (wheel) { void wheel.offsetWidth; wheel.style.transition = `transform ${customWheelConfig?.spinDurationMs || 4000}ms ${customWheelConfig?.easing || "cubic-bezier(0.2,0.8,0.3,1)"}`; }
 }
 
 // ============================================
-// GAME QUESTIONS (theme‑aware)
+// GAME QUESTIONS
 // ============================================
 function loadQuestion() {
     let qArray = currentThemeQuestions;
@@ -1175,18 +976,13 @@ function startAnswerReveal() {
     const btns = document.querySelectorAll('.answer-btn');
     let idx = 0;
     if (gameState.answerRevealTimeout) clearTimeout(gameState.answerRevealTimeout);
-    const skip = document.getElementById('skipHint');
-    if (skip) skip.style.display = 'block';
+    const skip = document.getElementById('skipHint'); if (skip) skip.style.display = 'block';
     function reveal() {
         if (idx < btns.length) {
-            btns[idx].style.opacity = '1';
-            btns[idx].style.transform = 'translateY(0)';
-            btns[idx].disabled = false;
-            idx++;
+            btns[idx].style.opacity = '1'; btns[idx].style.transform = 'translateY(0)'; btns[idx].disabled = false; idx++;
             gameState.answerRevealTimeout = setTimeout(reveal, GAME_CONFIG.answerRevealDelay);
         } else {
-            gameState.isRevealingAnswers = false;
-            if (skip) skip.style.display = 'none';
+            gameState.isRevealingAnswers = false; if (skip) skip.style.display = 'none';
         }
     }
     gameState.answerRevealTimeout = setTimeout(reveal, GAME_CONFIG.answerRevealDelay);
@@ -1194,18 +990,9 @@ function startAnswerReveal() {
 function skipAnswerReveal() {
     if (!gameState.isRevealingAnswers) return;
     if (gameState.answerRevealTimeout) clearTimeout(gameState.answerRevealTimeout);
-    const btns = document.querySelectorAll('.answer-btn');
-    const skip = document.getElementById('skipHint');
-    btns.forEach(btn => {
-        if (btn.style.opacity === '0' || btn.disabled) {
-            btn.style.transition = 'all 0.3s ease';
-            btn.style.opacity = '1';
-            btn.style.transform = 'translateY(0)';
-            btn.disabled = false;
-        }
-    });
-    gameState.isRevealingAnswers = false;
-    if (skip) skip.style.display = 'none';
+    const btns = document.querySelectorAll('.answer-btn'); const skip = document.getElementById('skipHint');
+    btns.forEach(btn => { if (btn.style.opacity === '0' || btn.disabled) { btn.style.transition = 'all 0.3s ease'; btn.style.opacity = '1'; btn.style.transform = 'translateY(0)'; btn.disabled = false; } });
+    gameState.isRevealingAnswers = false; if (skip) skip.style.display = 'none';
 }
 function reloadQuestionForLanguage() {
     if (currentThemeQuestions) loadThemeQuestions(currentTheme);
@@ -1213,27 +1000,20 @@ function reloadQuestionForLanguage() {
     const q = qArray[gameState.currentQuestion];
     if (q) {
         document.getElementById('questionText').textContent = q.question;
-        const answersContainer = document.getElementById('answersContainer');
-        const answerBtns = answersContainer.querySelectorAll('.answer-btn');
-        q.answers.forEach((ans, idx) => {
-            if (answerBtns[idx]) answerBtns[idx].textContent = `${String.fromCharCode(65 + idx)}) ${ans}`;
-        });
+        const answersContainer = document.getElementById('answersContainer'); const answerBtns = answersContainer.querySelectorAll('.answer-btn');
+        q.answers.forEach((ans, idx) => { if (answerBtns[idx]) answerBtns[idx].textContent = `${String.fromCharCode(65 + idx)}) ${ans}`; });
         updateLevelIndicator();
     }
 }
 function updateLevelIndicator() {
-    const levelEl = document.getElementById('currentLevel');
-    const prizeEl = document.getElementById('currentPrize');
-    const t = TRANSLATIONS[currentLanguage];
-    const config = THEME_CONFIG[currentTheme] || {};
+    const levelEl = document.getElementById('currentLevel'); const prizeEl = document.getElementById('currentPrize');
+    const t = TRANSLATIONS[currentLanguage]; const config = THEME_CONFIG[currentTheme] || {};
     if (levelEl) levelEl.textContent = gameState.currentQuestion + 1;
     if (prizeEl) {
         if (config.showPrizes !== false && t?.prizes) {
             const prize = t.prizes[gameState.currentQuestion] || TRANSLATIONS.bg.prizes[gameState.currentQuestion] || `${(gameState.currentQuestion + 1) * 100} BGN`;
             prizeEl.textContent = prize;
-        } else {
-            prizeEl.textContent = '';
-        }
+        } else { prizeEl.textContent = ''; }
     }
     const indicator = document.querySelector('.level-indicator');
     if (indicator && t.levelIndicator) {
@@ -1244,195 +1024,77 @@ function updateLevelIndicator() {
 }
 
 // ============================================
-// JOKERS (with theme support in 50:50)
+// JOKERS
 // ============================================
 function useFiftyFifty() {
     if (gameState.usedJokers.fiftyFifty) return;
-    playSound('joker5050Sound');
-    gameState.usedJokers.fiftyFifty = true;
-    document.getElementById('joker5050').disabled = true;
-    document.getElementById('joker5050').classList.add('used');
-    let q;
-    if (currentThemeQuestions) q = currentThemeQuestions[gameState.currentQuestion];
-    else q = TRANSLATIONS[currentLanguage]?.questions[gameState.currentQuestion];
-    if (!q) return;
-    const btns = document.querySelectorAll('.answer-btn');
-    let wrong = [];
-    btns.forEach((btn, idx) => { if (idx !== q.correct) wrong.push(btn); });
-    wrong.sort(() => Math.random() - 0.5);
-    wrong.slice(0, 2).forEach(btn => { btn.textContent = ''; btn.disabled = true; });
+    playSound('joker5050Sound'); gameState.usedJokers.fiftyFifty = true; document.getElementById('joker5050').disabled = true; document.getElementById('joker5050').classList.add('used');
+    let q; if (currentThemeQuestions) q = currentThemeQuestions[gameState.currentQuestion]; else q = TRANSLATIONS[currentLanguage]?.questions[gameState.currentQuestion];
+    if (!q) return; const btns = document.querySelectorAll('.answer-btn'); let wrong = []; btns.forEach((btn, idx) => { if (idx !== q.correct) wrong.push(btn); }); wrong.sort(() => Math.random() - 0.5); wrong.slice(0, 2).forEach(btn => { btn.textContent = ''; btn.disabled = true; });
 }
-function useAudience() {
-    if (gameState.usedJokers.audience) return;
-    gameState.usedJokers.audience = true;
-    document.getElementById('jokerAudience').disabled = true;
-    document.getElementById('jokerAudience').classList.add('used');
-    showAudienceJokerModal();
-}
-function showAudienceJokerModal() {
-    const modal = document.getElementById('audienceJokerModal');
-    if (modal) modal.style.display = 'flex';
-}
-function closeAudienceModal() {
-    const modal = document.getElementById('audienceJokerModal');
-    if (modal) modal.style.display = 'none';
-}
-function usePhone() {
-    if (gameState.usedJokers.phone) return;
-    gameState.usedJokers.phone = true;
-    document.getElementById('jokerPhone').disabled = true;
-    document.getElementById('jokerPhone').classList.add('used');
-    showPhoneJokerModal();
-}
-function showPhoneJokerModal() {
-    const modal = document.getElementById('phoneJokerModal');
-    const modalContent = modal.querySelector('.phone-modal-content');
-    modalContent.innerHTML = `<h2>📞 Помощ от приятел</h2><div id="phoneTimer" class="phone-timer">${GAME_CONFIG.countdownDuration}</div><p>Приятелят ви мисли...</p><button id="closePhoneModal" class="close-phone-modal">Затвори</button>`;
-    modal.style.display = 'block';
-    document.getElementById('closePhoneModal').onclick = closePhoneModal;
-    startSeamlessTickSound();
-    startPhoneCountdown();
-}
-function startSeamlessTickSound() {
-    const t1 = document.getElementById('friendJokerTimeTick1');
-    const t2 = document.getElementById('friendJokerTimeTick2');
-    t1.currentTime = 0; t2.currentTime = 0; t1.pause(); t2.pause();
-    const dur = 1000;
-    t1.play().catch(e => console.log("Tick sound play failed:", e));
-    gameState.currentTickSound = 1;
-    gameState.tickInterval = setInterval(() => {
-        if (gameState.currentTickSound === 1) {
-            t2.currentTime = 0; t2.play().catch(e => console.log("Tick sound 2 play failed:", e));
-            gameState.currentTickSound = 2;
-        } else {
-            t1.currentTime = 0; t1.play().catch(e => console.log("Tick sound 1 play failed:", e));
-            gameState.currentTickSound = 1;
-        }
-    }, dur - 100);
-}
-function stopSeamlessTickSound() {
-    if (gameState.tickInterval) { clearInterval(gameState.tickInterval); gameState.tickInterval = null; }
-    const t1 = document.getElementById('friendJokerTimeTick1');
-    const t2 = document.getElementById('friendJokerTimeTick2');
-    t1.pause(); t2.pause(); t1.currentTime = 0; t2.currentTime = 0;
-}
-function startPhoneCountdown() {
-    const timer = document.getElementById('phoneTimer');
-    let time = GAME_CONFIG.countdownDuration;
-    timer.textContent = time;
-    const count = setInterval(() => {
-        time--;
-        timer.textContent = time;
-        if (time <= 0) { clearInterval(count); stopSeamlessTickSound(); closePhoneModal(); }
-    }, 1000);
-    const modal = document.getElementById('phoneJokerModal');
-    modal.dataset.countdown = count;
-}
-function closePhoneModal() {
-    const modal = document.getElementById('phoneJokerModal');
-    if (modal) {
-        modal.style.display = 'none';
-        stopSeamlessTickSound();
-        if (modal.dataset.countdown) { clearInterval(parseInt(modal.dataset.countdown)); delete modal.dataset.countdown; }
-    }
-}
+function useAudience() { if (gameState.usedJokers.audience) return; gameState.usedJokers.audience = true; document.getElementById('jokerAudience').disabled = true; document.getElementById('jokerAudience').classList.add('used'); showAudienceJokerModal(); }
+function showAudienceJokerModal() { const modal = document.getElementById('audienceJokerModal'); if (modal) modal.style.display = 'flex'; }
+function closeAudienceModal() { const modal = document.getElementById('audienceJokerModal'); if (modal) modal.style.display = 'none'; }
+function usePhone() { if (gameState.usedJokers.phone) return; gameState.usedJokers.phone = true; document.getElementById('jokerPhone').disabled = true; document.getElementById('jokerPhone').classList.add('used'); showPhoneJokerModal(); }
+function showPhoneJokerModal() { const modal = document.getElementById('phoneJokerModal'); const modalContent = modal.querySelector('.phone-modal-content'); modalContent.innerHTML = `<h2>📞 Помощ от приятел</h2><div id="phoneTimer" class="phone-timer">${GAME_CONFIG.countdownDuration}</div><p>Приятелят ви мисли...</p><button id="closePhoneModal" class="close-phone-modal">Затвори</button>`; modal.style.display = 'block'; document.getElementById('closePhoneModal').onclick = closePhoneModal; startSeamlessTickSound(); startPhoneCountdown(); }
+function startSeamlessTickSound() { const t1 = document.getElementById('friendJokerTimeTick1'); const t2 = document.getElementById('friendJokerTimeTick2'); t1.currentTime = 0; t2.currentTime = 0; t1.pause(); t2.pause(); const dur = 1000; t1.play().catch(e => console.log("Tick sound play failed:", e)); gameState.currentTickSound = 1; gameState.tickInterval = setInterval(() => { if (gameState.currentTickSound === 1) { t2.currentTime = 0; t2.play().catch(e => console.log("Tick sound 2 play failed:", e)); gameState.currentTickSound = 2; } else { t1.currentTime = 0; t1.play().catch(e => console.log("Tick sound 1 play failed:", e)); gameState.currentTickSound = 1; } }, dur - 100); }
+function stopSeamlessTickSound() { if (gameState.tickInterval) { clearInterval(gameState.tickInterval); gameState.tickInterval = null; } const t1 = document.getElementById('friendJokerTimeTick1'); const t2 = document.getElementById('friendJokerTimeTick2'); t1.pause(); t2.pause(); t1.currentTime = 0; t2.currentTime = 0; }
+function startPhoneCountdown() { const timer = document.getElementById('phoneTimer'); let time = GAME_CONFIG.countdownDuration; timer.textContent = time; const count = setInterval(() => { time--; timer.textContent = time; if (time <= 0) { clearInterval(count); stopSeamlessTickSound(); closePhoneModal(); } }, 1000); const modal = document.getElementById('phoneJokerModal'); modal.dataset.countdown = count; }
+function closePhoneModal() { const modal = document.getElementById('phoneJokerModal'); if (modal) { modal.style.display = 'none'; stopSeamlessTickSound(); if (modal.dataset.countdown) { clearInterval(parseInt(modal.dataset.countdown)); delete modal.dataset.countdown; } } }
 
 // ============================================
-// ANSWER CHECKING (with milestone sounds and dynamic prizes)
+// ANSWER CHECKING
 // ============================================
 function checkAnswer(selected, correct) {
     console.log("Answer clicked - selected:", selected, "correct:", correct);
     playSound('answerChosenSound');
     const btns = document.querySelectorAll('.answer-btn');
     btns.forEach(b => { b.disabled = true; b.style.cursor = 'not-allowed'; });
-    const selectedBtn = btns[selected];
-    const correctBtn = btns[correct];
-    selectedBtn.style.background = 'linear-gradient(135deg, #ffed4e, #ffd700)';
-    selectedBtn.style.color = '#000066';
-    selectedBtn.style.border = '3px solid #cc9900';
+    const selectedBtn = btns[selected]; const correctBtn = btns[correct];
+    selectedBtn.style.background = 'linear-gradient(135deg, #ffed4e, #ffd700)'; selectedBtn.style.color = '#000066'; selectedBtn.style.border = '3px solid #cc9900';
 
     setTimeout(() => {
         if (selected === correct) {
-            let sound;
-            const config = THEME_CONFIG[currentTheme] || {};
-            if (config.milestones && config.milestones.includes(gameState.currentQuestion)) {
-                sound = 'correctAnswer3';
-            } else if (gameState.currentQuestion === 4 || gameState.currentQuestion === 9) {
-                sound = 'correctAnswer3';
-            } else if (gameState.currentQuestion < 5) {
-                sound = 'correctAnswerSound';
-            } else {
-                sound = 'correctAnswer2';
-            }
+            let sound; const config = THEME_CONFIG[currentTheme] || {};
+            if (config.milestones && config.milestones.includes(gameState.currentQuestion)) { sound = 'correctAnswer3'; }
+            else if (gameState.currentQuestion === 4 || gameState.currentQuestion === 9) { sound = 'correctAnswer3'; }
+            else if (gameState.currentQuestion < 5) { sound = 'correctAnswerSound'; }
+            else { sound = 'correctAnswer2'; }
 
             if (currentTheme === 'Minecraft') {
                 setTimeout(() => {
-                    selectedBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
-                    selectedBtn.style.color = '#000066';
-                    selectedBtn.style.border = '3px solid #00aa00';
+                    selectedBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)'; selectedBtn.style.color = '#000066'; selectedBtn.style.border = '3px solid #00aa00';
                     playSound(sound);
                     setTimeout(() => {
-                        const t = TRANSLATIONS[currentLanguage];
-                        const prize = (config.showPrizes !== false) ? (t?.prizes?.[gameState.currentQuestion] || `${(gameState.currentQuestion + 1) * 100} BGN`) : '';
+                        const t = TRANSLATIONS[currentLanguage]; const prize = (config.showPrizes !== false) ? (t?.prizes?.[gameState.currentQuestion] || `${(gameState.currentQuestion + 1) * 100} BGN`) : '';
                         alert(`✅ Правилен отговор!${prize ? ' Спечелихте ' + prize + '!' : ''}`);
                         gameState.currentQuestion++;
-                        if (gameState.currentQuestion < currentTotalQuestions) {
-                            playSound('moveForwardSound');
-                            setTimeout(() => loadQuestion(), 1000);
-                        } else {
-                            alert('🎉 ЧЕСТИТО! Спечелихте!');
-                            gameState.currentQuestion = 0;
-                            resetGame();
-                        }
+                        if (gameState.currentQuestion < currentTotalQuestions) { playSound('moveForwardSound'); setTimeout(() => loadQuestion(), 1000); }
+                        else { alert('🎉 ЧЕСТИТО! Спечелихте!'); gameState.currentQuestion = 0; resetGame(); }
                     }, 3000);
                 }, 750);
             } else {
-                selectedBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
-                selectedBtn.style.color = '#000066';
-                selectedBtn.style.border = '3px solid #00aa00';
+                selectedBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)'; selectedBtn.style.color = '#000066'; selectedBtn.style.border = '3px solid #00aa00';
                 playSound(sound);
                 setTimeout(() => {
-                    const t = TRANSLATIONS[currentLanguage];
-                    const prize = (config.showPrizes !== false) ? (t?.prizes?.[gameState.currentQuestion] || `${(gameState.currentQuestion + 1) * 100} BGN`) : '';
+                    const t = TRANSLATIONS[currentLanguage]; const prize = (config.showPrizes !== false) ? (t?.prizes?.[gameState.currentQuestion] || `${(gameState.currentQuestion + 1) * 100} BGN`) : '';
                     alert(`✅ Правилен отговор!${prize ? ' Спечелихте ' + prize + '!' : ''}`);
                     gameState.currentQuestion++;
-                    if (gameState.currentQuestion < currentTotalQuestions) {
-                        playSound('moveForwardSound');
-                        setTimeout(() => loadQuestion(), 1000);
-                    } else {
-                        alert('🎉 ЧЕСТИТО! Спечелихте!');
-                        gameState.currentQuestion = 0;
-                        resetGame();
-                    }
+                    if (gameState.currentQuestion < currentTotalQuestions) { playSound('moveForwardSound'); setTimeout(() => loadQuestion(), 1000); }
+                    else { alert('🎉 ЧЕСТИТО! Спечелихте!'); gameState.currentQuestion = 0; resetGame(); }
                 }, 3000);
             }
         } else {
-            // Wrong answer
-            if (correctBtn) {
-                correctBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
-                correctBtn.style.color = '#000066';
-                correctBtn.style.border = '3px solid #00aa00';
-            }
+            if (correctBtn) { correctBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)'; correctBtn.style.color = '#000066'; correctBtn.style.border = '3px solid #00aa00'; }
             playSound('wrongAnswerSound');
-
-            if (currentTheme === 'Minecraft') {
+            if (currentTheme === 'Minecraft') { setTimeout(() => { showMinecraftDeathScreen(); }, 500); }
+            else {
                 setTimeout(() => {
-                    showMinecraftDeathScreen();
-                }, 500);
-                // No alert for Minecraft theme
-            } else {
-                setTimeout(() => {
-                    const config = THEME_CONFIG[currentTheme] || {};
-                    const t = TRANSLATIONS[currentLanguage];
-                    let prize = 'нищо';
-                    if (config.showPrizes !== false && gameState.currentQuestion > 0) {
-                        prize = t?.prizes?.[gameState.currentQuestion - 1] || `${gameState.currentQuestion * 100} BGN`;
-                    } else if (gameState.currentQuestion > 0) {
-                        prize = 'нищо (няма парична награда)';
-                    }
+                    const config = THEME_CONFIG[currentTheme] || {}; const t = TRANSLATIONS[currentLanguage]; let prize = 'нищо';
+                    if (config.showPrizes !== false && gameState.currentQuestion > 0) { prize = t?.prizes?.[gameState.currentQuestion - 1] || `${gameState.currentQuestion * 100} BGN`; }
+                    else if (gameState.currentQuestion > 0) { prize = 'нищо (няма парична награда)'; }
                     alert(`❌ Грешен отговор! Играта свърши. Спечелихте: ${prize}`);
-                    gameState.currentQuestion = 0;
-                    resetGame();
+                    gameState.currentQuestion = 0; resetGame();
                 }, 3000);
             }
         }
@@ -1442,8 +1104,43 @@ function checkAnswer(selected, correct) {
 function resetGame() {
     gameState.usedJokers = { fiftyFifty: false, audience: false, phone: false };
     document.querySelectorAll('.joker-btn').forEach(btn => { btn.disabled = false; btn.classList.remove('used'); });
+    clearTimeout(gameState.answerRevealTimeout);  // FIX: clear pending reveal
     removeDeathZoom();
     setTimeout(loadQuestion, 1000);
+}
+
+// ============================================
+// SAVE THEME TO CLOUD
+// ============================================
+async function saveCurrentThemeToCloud() {
+    if (!currentThemeQuestions || !currentTheme) {
+        alert('Няма заредена тема.');
+        return;
+    }
+    const themeName = prompt('Въведете име на темата:', currentTheme + ' (потребителски)');
+    if (!themeName) return;
+
+    const payload = {
+        name: themeName,
+        questionsData: currentThemeQuestions,
+        category: THEME_CATEGORIES[currentTheme] || 'user'
+    };
+
+    try {
+        const response = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/themes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert(`✅ Темата е запазена с ID ${result.id}!`);
+        } else {
+            alert('❌ Грешка при запазване: ' + (result.error || 'неизвестна'));
+        }
+    } catch (err) {
+        alert('❌ Неуспешна връзка с API: ' + err.message);
+    }
 }
 
 // ============================================
@@ -1451,8 +1148,6 @@ function resetGame() {
 // ============================================
 document.addEventListener('DOMContentLoaded', function () {
     console.log("=== GAME INITIALIZATION STARTED ===");
-    // playIntroVideo(); // uncomment if you have intro video
-
     const startBtn = document.getElementById('startButton');
     const tutorialBtn = document.getElementById('tutorialButton');
     const wheelBtn = document.getElementById('spinningWheelButton');
@@ -1469,22 +1164,18 @@ document.addEventListener('DOMContentLoaded', function () {
         initializeMoneyTreeToggle();
         initializeSpinningWheel();
         playStartMenuMusic();
-        const closeAudience = document.getElementById('closeAudienceModal');
-        if (closeAudience) closeAudience.onclick = closeAudienceModal;
-        const closePhone = document.getElementById('closePhoneModal');
-        if (closePhone) closePhone.onclick = closePhoneModal;
-        const audienceModal = document.getElementById('audienceJokerModal');
-        if (audienceModal) audienceModal.onclick = e => { if (e.target === audienceModal) closeAudienceModal(); };
-        const phoneModal = document.getElementById('phoneJokerModal');
-        if (phoneModal) phoneModal.onclick = e => { if (e.target === phoneModal) closePhoneModal(); };
-        document.addEventListener('click', e => {
-            if (!e.target.classList.contains('answer-btn') && !e.target.classList.contains('joker-btn')) skipAnswerReveal();
-        });
-        document.addEventListener('keydown', e => {
-            if (e.code === 'Space' && gameState.isRevealingAnswers) { e.preventDefault(); skipAnswerReveal(); }
-            if (e.code === 'Escape') { closePhoneModal(); closeAudienceModal(); }
-        });
+        const closeAudience = document.getElementById('closeAudienceModal'); if (closeAudience) closeAudience.onclick = closeAudienceModal;
+        const closePhone = document.getElementById('closePhoneModal'); if (closePhone) closePhone.onclick = closePhoneModal;
+        const audienceModal = document.getElementById('audienceJokerModal'); if (audienceModal) audienceModal.onclick = e => { if (e.target === audienceModal) closeAudienceModal(); };
+        const phoneModal = document.getElementById('phoneJokerModal'); if (phoneModal) phoneModal.onclick = e => { if (e.target === phoneModal) closePhoneModal(); };
+        document.addEventListener('click', e => { if (!e.target.classList.contains('answer-btn') && !e.target.classList.contains('joker-btn')) skipAnswerReveal(); });
+        document.addEventListener('keydown', e => { if (e.code === 'Space' && gameState.isRevealingAnswers) { e.preventDefault(); skipAnswerReveal(); } if (e.code === 'Escape') { closePhoneModal(); closeAudienceModal(); } });
         window.addEventListener('resize', updateGameContainerResponsiveness);
+
+        // Attach save button event
+        const saveBtn = document.getElementById('saveCloudBtn');
+        if (saveBtn) saveBtn.addEventListener('click', saveCurrentThemeToCloud);
+
         console.log("=== GAME INITIALIZATION COMPLETE ===");
     } catch (err) {
         console.error("CRITICAL ERROR during initialization:", err);
