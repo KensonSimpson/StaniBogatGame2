@@ -1686,60 +1686,64 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const saveBtn = document.getElementById('saveCloudBtn');
         if (saveBtn) saveBtn.addEventListener('click', saveCurrentThemeToCloud);
+
         // ===== NEW: Custom Editor & Browse buttons =====
-const openEditorButton = document.getElementById('openEditorButton');
-const openBrowseButton = document.getElementById('openBrowseButton');
-const backFromEditorBtn = document.getElementById('backFromEditorBtn');
-const backFromBrowseBtn = document.getElementById('backFromBrowseBtn');
-const saveThemeBtn = document.getElementById('saveThemeBtn');
-const addQuestionBtn = document.getElementById('addQuestionBtn');
-const customEditorScreen = document.getElementById('customEditorScreen');
-const browseThemesScreen = document.getElementById('browseThemesScreen');
-const startMenu = document.getElementById('startMenu');
+        const openEditorButton = document.getElementById('openEditorButton');
+        const openBrowseButton = document.getElementById('openBrowseButton');
+        const backFromEditorBtn = document.getElementById('backFromEditorBtn');
+        const backFromBrowseBtn = document.getElementById('backFromBrowseBtn');
+        const saveThemeBtn = document.getElementById('saveThemeBtn');
+        const addQuestionBtn = document.getElementById('addQuestionBtn');
+        const customEditorScreen = document.getElementById('customEditorScreen');
+        const browseThemesScreen = document.getElementById('browseThemesScreen');
+        const startMenu = document.getElementById('startMenu');
 
-if (openEditorButton && openBrowseButton && customEditorScreen && browseThemesScreen) {
-    openEditorButton.addEventListener('click', () => {
-        performTransition(() => {
-            startMenu.style.display = 'none';
-            customEditorScreen.style.display = 'flex';
-            initEditor();  // prepare question fields
-        });
-    });
+        if (openEditorButton && openBrowseButton && customEditorScreen && browseThemesScreen) {
+            openEditorButton.addEventListener('click', () => {
+                performTransition(() => {
+                    startMenu.style.display = 'none';
+                    customEditorScreen.style.display = 'flex';
+                    initEditor();
+                });
+            });
 
-    openBrowseButton.addEventListener('click', () => {
-        performTransition(() => {
-            startMenu.style.display = 'none';
-            browseThemesScreen.style.display = 'flex';
-            fetchAndDisplayThemes('');
-        });
-    });
+            openBrowseButton.addEventListener('click', () => {
+                performTransition(() => {
+                    startMenu.style.display = 'none';
+                    browseThemesScreen.style.display = 'flex';
+                    fetchAndDisplayThemes('');
+                });
+            });
 
-    backFromEditorBtn.addEventListener('click', () => {
-        performTransition(() => {
-            customEditorScreen.style.display = 'none';
-            startMenu.style.display = 'flex';
-        });
-    });
+            backFromEditorBtn.addEventListener('click', () => {
+                performTransition(() => {
+                    customEditorScreen.style.display = 'none';
+                    startMenu.style.display = 'flex';
+                });
+            });
 
-    backFromBrowseBtn.addEventListener('click', () => {
-        performTransition(() => {
-            browseThemesScreen.style.display = 'none';
-            startMenu.style.display = 'flex';
-        });
-    });
+            backFromBrowseBtn.addEventListener('click', () => {
+                performTransition(() => {
+                    browseThemesScreen.style.display = 'none';
+                    startMenu.style.display = 'flex';
+                });
+            });
 
-    saveThemeBtn.addEventListener('click', saveEditorTheme);
+            saveThemeBtn.addEventListener('click', saveEditorTheme);
 
-    addQuestionBtn.addEventListener('click', () => {
-        addQuestionBlock(0, '', ['', '', '', ''], 0);
-    });
+            addQuestionBtn.addEventListener('click', () => {
+                addQuestionBlock(0, '', ['', '', '', ''], 0);
+            });
+        }
 
-    // Search bar for browse screen
-    const searchInput = document.getElementById('themeSearchInput');
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            fetchAndDisplayThemes(e.target.value);
-        });
+        // Search bar for browse screen
+        const searchInput = document.getElementById('themeSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                fetchAndDisplayThemes(e.target.value);
+            });
+        }
+
         console.log("=== GAME INITIALIZATION COMPLETE ===");
     } catch (err) {
         console.error("CRITICAL ERROR during initialization:", err);
