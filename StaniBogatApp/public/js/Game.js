@@ -1445,6 +1445,210 @@ async function saveCurrentThemeToCloud() {
 // ============================================
 // INITIALIZATION
 // ============================================
+// ============================================
+// CUSTOM THEME EDITOR
+// ============================================
+let editorQuestionCount = 0;
+
+function initEditor(questions = null) {
+    const container = document.getElementById('questionsContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    if (questions && questions.length > 0) {
+        // load existing questions (for editing)
+        questions.forEach((q, idx) => {
+            addQuestionBlock(idx, q.question, q.answers, q.correct);
+        });
+    } else {
+        // start with 1 empty question
+        addQuestionBlock(0, '', ['', '', '', ''], 0);
+    }
+    document.getElementById('themeNameInput').value = '';
+}
+
+function addQuestionBlock(id, question, answers, correct) {
+    const container = document.getElementById('questionsContainer');
+    if (!container) return;
+    const block = document.createElement('div');
+    block.className = 'question-block';
+    block.dataset.id = id;
+    block.innerHTML = `
+        <button class="remove-question-btn" onclick="this.parentElement.remove()">✖</button>
+        <h4>Въпрос #${id + 1}</h4>
+        <input type="text" class="question-input" placeholder="Текст на въпроса" value="${escapeHtml(question)}" />
+        <div class="answers">
+            <label>A: <input type="text" class="answer-input" value="${escapeHtml(answers[0] || '')}" /></label>
+            <label>B: <input type="text" class="answer-input" value="${escapeHtml(answers[1] || '')}" /></label>
+            <label>C: <input type="text" class="answer-input" value="${escapeHtml(answers[2] || '')}" /></label>
+            <label>D: <input type="text" class="answer-input" value="${escapeHtml(answers[3] || '')}" /></label>
+        </div>
+        <label>Верен отговор:
+            <select class="correct-select">
+                <option value="0" ${correct === 0 ? 'selected' : ''}>A</option>
+                <option value="1" ${correct === 1 ? 'selected' : ''}>B</option>
+                <option value="2" ${correct === 2 ? 'selected' : ''}>C</option>
+                <option value="3" ${correct === 3 ? 'selected' : ''}>D</option>
+            </select>
+        </label>
+    `;
+    container.appendChild(block);
+}
+
+function escapeHtml(text) {
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+async function saveEditorTheme() {
+    const nameInput = document.getElementById('themeNameInput');
+    if (!nameInput || nameInput.value.trim() === '') {
+        alert('Моля, въведете име на темата.');
+        return;
+    }
+    const themeName = nameInput.value.trim();
+    const blocks = document.querySelectorAll('.question-block');
+    const questionsData = [];
+    blocks.forEach(block => {
+        const questionText = block.querySelector('.question-input').value.trim();
+        const answerInputs = block.querySelectorAll('.answer-input');
+        const correctSelect = block.querySelector('.correct-select');
+        if (questionText === '' || answerInputs[0].value.trim() === '' || answerInputs[1].value.trim() === '' || answerInputs[2].value.trim() === '' || answerInputs[3].value.trim() === '') {
+            // skip incomplete question
+            return;
+        }
+        questionsData.push({
+            question: questionText,
+            answers: [
+                answerInputs[0].value.trim(),
+                answerInputs[1].value.trim(),
+                answerInputs[2].value.trim(),
+                answerInputs[3].value.trim()
+            ],
+            correct: parseInt(correctSelect.value)
+        });
+    });
+    if (questionsData.length === 0) {
+        alert('Трябва да има поне един пълен въпрос.');
+        return;
+    }
+
+    // Save via the existing worker (same as saveCurrentThemeToCloud, but with these questions)
+    const payload = {
+        name: themeName,
+        questionsData: questionsData,
+        category: 'user' // could be extended later
+    };
+
+    try {
+        const response = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/themes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert(`✅ Темата е запазена с ID ${result.id}!`);
+            // clear editor
+            document.getElementById('questionsContainer').innerHTML = '';
+            nameInput.value = '';
+            initEditor();
+        } else {
+            alert('❌ Грешка при запазване: ' + (result.error || 'неизвестна'));
+        }
+    } catch (err) {
+        alert('❌ Неуспешна връзка с API: ' + err.message);
+    }
+}
+
+// ============================================
+// BROWSE UPLOADED THEMES
+// ============================================
+async function fetchAndDisplayThemes(searchTerm = '') {
+    const container = document.getElementById('themeListContainer');
+    if (!container) return;
+    container.innerHTML = '<p>Зареждане...</p>';
+
+    try {
+        const response = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/themes');
+        const themes = await response.json();
+        // Filter by search term
+        const filtered = themes.filter(t => {
+            const lowerSearch = searchTerm.toLowerCase();
+            return t.id.toString().includes(lowerSearch) || t.name.toLowerCase().includes(lowerSearch);
+        });
+
+        if (filtered.length === 0) {
+            container.innerHTML = '<p>Няма намерени теми.</p>';
+            return;
+        }
+
+        container.innerHTML = '';
+        filtered.forEach(theme => {
+            const card = document.createElement('div');
+            card.className = 'theme-card';
+            card.innerHTML = `
+                <h4>${escapeHtml(theme.name)} <small>(ID: ${theme.id})</small></h4>
+                <p>Категория: ${escapeHtml(theme.category)} | Въпроси: ${JSON.parse(theme.questionsData).length}</p>
+                <button class="spin-button" onclick="loadUserTheme(${theme.id})">▶ Играй</button>
+            `;
+            container.appendChild(card);
+        });
+    } catch (err) {
+        container.innerHTML = '<p>Грешка при зареждане на темите.</p>';
+        console.error(err);
+    }
+}
+
+// This function loads a user theme directly into the game (same flow as built-in themes)
+async function loadUserTheme(themeId) {
+    const response = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/themes');
+    const themes = await response.json();
+    const theme = themes.find(t => t.id === themeId);
+    if (!theme) {
+        alert('Темата не е намерена.');
+        return;
+    }
+    const questions = JSON.parse(theme.questionsData);
+    if (!Array.isArray(questions) || questions.length === 0) {
+        alert('Темата не съдържа валидни въпроси.');
+        return;
+    }
+    // Prepare global state as if a built-in theme was chosen
+    currentTheme = theme.name;
+    currentThemeQuestions = questions;
+    currentTotalQuestions = questions.length;
+    gameState.currentQuestion = 0;
+    gameState.usedJokers = { fiftyFifty: false, audience: false, phone: false };
+    document.querySelectorAll('.joker-btn').forEach(b => { b.disabled = false; b.classList.remove('used'); });
+    cancelAllTimers();
+    // Hide browse screen
+    document.getElementById('browseThemesScreen').style.display = 'none';
+    // Show game container
+    const gameContainer = document.getElementById('gameContainer');
+    gameContainer.style.display = 'block';
+    gameContainer.style.opacity = '1';
+    const moneyTree = document.getElementById('moneyTree');
+    if (moneyTree) { moneyTree.style.display = 'block'; generateMoneyTree(currentTheme); }
+    const levelIndicator = document.querySelector('.level-indicator');
+    if (levelIndicator) levelIndicator.style.display = 'block';
+    const backButtonContainer = document.querySelector('.game-back-button-container');
+    if (backButtonContainer) backButtonContainer.style.display = 'block';
+    const gameBack = document.getElementById('gameBackButton');
+    if (gameBack) gameBack.style.display = 'block';
+    const moneyTreeToggle = document.getElementById('moneyTreeToggle');
+    if (moneyTreeToggle) { moneyTreeToggle.style.display = 'block'; moneyTreeToggle.style.opacity = '1'; }
+    gameContainer.classList.remove('narrow');
+    moneyTreeToggle.innerHTML = '💰';
+    gameState.isMoneyTreeVisible = false;
+    setTimeout(() => updateGameContainerResponsiveness(), 100);
+    stopRetroMusic();
+    setThemeBackground(null);
+    stopThemeMusic();
+    removeMinecraftTheme();
+    const answersContainer = document.getElementById('answersContainer');
+    if (answersContainer) answersContainer.innerHTML = '';
+    loadQuestion();
+}
 document.addEventListener('DOMContentLoaded', function () {
     console.log("=== GAME INITIALIZATION STARTED ===");
     const startBtn = document.getElementById('startButton');
@@ -1482,7 +1686,60 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const saveBtn = document.getElementById('saveCloudBtn');
         if (saveBtn) saveBtn.addEventListener('click', saveCurrentThemeToCloud);
+        // ===== NEW: Custom Editor & Browse buttons =====
+const openEditorButton = document.getElementById('openEditorButton');
+const openBrowseButton = document.getElementById('openBrowseButton');
+const backFromEditorBtn = document.getElementById('backFromEditorBtn');
+const backFromBrowseBtn = document.getElementById('backFromBrowseBtn');
+const saveThemeBtn = document.getElementById('saveThemeBtn');
+const addQuestionBtn = document.getElementById('addQuestionBtn');
+const customEditorScreen = document.getElementById('customEditorScreen');
+const browseThemesScreen = document.getElementById('browseThemesScreen');
+const startMenu = document.getElementById('startMenu');
 
+if (openEditorButton && openBrowseButton && customEditorScreen && browseThemesScreen) {
+    openEditorButton.addEventListener('click', () => {
+        performTransition(() => {
+            startMenu.style.display = 'none';
+            customEditorScreen.style.display = 'flex';
+            initEditor();  // prepare question fields
+        });
+    });
+
+    openBrowseButton.addEventListener('click', () => {
+        performTransition(() => {
+            startMenu.style.display = 'none';
+            browseThemesScreen.style.display = 'flex';
+            fetchAndDisplayThemes('');
+        });
+    });
+
+    backFromEditorBtn.addEventListener('click', () => {
+        performTransition(() => {
+            customEditorScreen.style.display = 'none';
+            startMenu.style.display = 'flex';
+        });
+    });
+
+    backFromBrowseBtn.addEventListener('click', () => {
+        performTransition(() => {
+            browseThemesScreen.style.display = 'none';
+            startMenu.style.display = 'flex';
+        });
+    });
+
+    saveThemeBtn.addEventListener('click', saveEditorTheme);
+
+    addQuestionBtn.addEventListener('click', () => {
+        addQuestionBlock(0, '', ['', '', '', ''], 0);
+    });
+
+    // Search bar for browse screen
+    const searchInput = document.getElementById('themeSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            fetchAndDisplayThemes(e.target.value);
+        });
         console.log("=== GAME INITIALIZATION COMPLETE ===");
     } catch (err) {
         console.error("CRITICAL ERROR during initialization:", err);
