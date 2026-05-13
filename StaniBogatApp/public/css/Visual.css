@@ -1432,3 +1432,25 @@ body {
     margin: 0;
     color: #ccc;
 }
+/* === Top‑right positioning for editor & browse buttons === */
+.top-right-btn {
+    position: absolute;
+    top: 25px;
+}
+.create-btn {
+    right: 130px;           /* placement for the green plus button */
+}
+#openBrowseButton {
+    right: 25px;            /* search button closer to the corner */
+}
+
+/* === Green colour override for the create button === */
+.create-btn {
+    background: var(--success-green);
+    border-color: var(--gold-color);
+}
+.create-btn:hover {
+    background: linear-gradient(135deg, #00aa00, #00cc00);
+    transform: scale(1.1);
+    box-shadow: 0 0 30px rgba(0,255,0,0.7);
+}
