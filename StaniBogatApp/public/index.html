@@ -37,6 +37,7 @@
         <button id="tutorialButton" class="tutorial-button">КАК СЕ ИГРАЕ</button>
         <button id="startButton" class="start-button">ЗАПОЧНИ ИГРА</button>
         <button id="spinningWheelButton" class="spinning-wheel-button">КОЛЕЛО НА КЪСМЕТА</button>
+        <button id="multiplayerButton" class="start-button">МУЛТИПЛЕЪР</button>
     </div>
 
     <!-- NEW BUTTONS – positioned top‑right -->
@@ -97,6 +98,26 @@
             <!-- dynamically loaded -->
         </div>
         <button id="backFromBrowseBtn" class="back-button">← Назад към началния екран</button>
+    </div>
+</div>
+
+<!-- MULTIPLAYER MENU SCREEN -->
+<div id="multiplayerMenuScreen" class="theme-selection-screen" style="display: none;">
+    <div class="theme-selection-content">
+        <h2 class="theme-selection-title">🎮 Мултиплеър</h2>
+        <button id="createRoomButton" class="theme-btn">🏠 Създай стая</button>
+        <button id="joinRoomButton" class="theme-btn">🚪 Присъедини се</button>
+        <button id="backFromMultiMenuButton" class="back-button">← Назад</button>
+    </div>
+</div>
+
+<!-- JOIN ROOM SCREEN -->
+<div id="joinRoomScreen" class="theme-selection-screen" style="display: none;">
+    <div class="theme-selection-content">
+        <h2 class="theme-selection-title">🔑 Въведи код на стая</h2>
+        <input type="text" id="roomCodeInput" placeholder="ABCDEF" maxlength="6" style="font-size: 24px; text-align: center; width: 100%; padding: 10px; border-radius: 10px; border: 2px solid gold; background: #000044; color: white;" />
+        <button id="confirmJoinButton" class="theme-btn" style="margin-top: 15px;">✅ Присъедини се</button>
+        <button id="backFromJoinButton" class="back-button">← Назад</button>
     </div>
 </div>
 
@@ -301,7 +322,8 @@
     </div>
 </div>
 
-<!-- JavaScript includes (order matters) -->
+<!-- Trystero (P2P multiplayer) -->
+<script src="https://cdn.jsdelivr.net/npm/trystero@0.20.14/dist/trystero.min.js"></script>
 <script src="js/translations.js"></script>
 <script src="js/questions-data.js?v=4"></script>
 <script src="js/Game.js?v=6"></script>
