@@ -1669,7 +1669,7 @@ function stopUserThemeMusic() {
 }
 
 // ============================================
-// MULTIPLAYER MODULE (Trystero P2P) – FIXED
+// MULTIPLAYER MODULE (Trystero – updated for modern API)
 // ============================================
 let room = null;
 let mpPlayers = [];
@@ -1701,13 +1701,14 @@ const startMpGameBtn = document.getElementById('startMpGameBtn');
 const leaveRoomBtn = document.getElementById('leaveRoomBtn');
 
 async function createMultiplayerRoom() {
-    if (typeof trystero === 'undefined') {
+    if (typeof trystero === 'undefined' || typeof trystero.joinRoom !== 'function') {
         alert('Мултиплеър библиотеката не е заредена. Опитайте отново.');
         return;
     }
     mpPlayerName = prompt('Вашето име:') || 'Player';
     try {
-        room = trystero.joinRoom('stanibogat-quiz');
+        // New API: config object with appId
+        room = trystero.joinRoom({ appId: 'stanibogat-quiz' });
     } catch (err) {
         alert('Грешка при създаване на стаята: ' + err.message);
         return;
@@ -1715,7 +1716,6 @@ async function createMultiplayerRoom() {
     isHost = true;
 
     setupRoomEvents();
-    // Use full room ID, but show only first 6 characters
     const fullRoomId = room.roomId;
     mpRoomCode = fullRoomId.substring(0, 6).toUpperCase();
     document.getElementById('displayRoomCode').textContent = mpRoomCode;
@@ -1731,13 +1731,14 @@ async function createMultiplayerRoom() {
 }
 
 async function joinMultiplayerRoom(code) {
-    if (typeof trystero === 'undefined') {
+    if (typeof trystero === 'undefined' || typeof trystero.joinRoom !== 'function') {
         alert('Мултиплеър библиотеката не е заредена. Опитайте отново.');
         return;
     }
     mpPlayerName = prompt('Вашето име:') || 'Player';
     try {
-        room = trystero.joinRoom('stanibogat-quiz', code.toLowerCase());
+        // New API: first arg is config, second is roomId
+        room = trystero.joinRoom({ appId: 'stanibogat-quiz' }, code.toLowerCase());
     } catch (err) {
         alert('Грешка при присъединяване: ' + err.message);
         return;
@@ -1914,164 +1915,4 @@ leaveRoomBtn.addEventListener('click', () => {
     room = null;
     roomScreen.style.display = 'none';
     document.getElementById('multiplayerMenuScreen').style.display = 'flex';
-});
-
-// ============================================
-// INITIALIZATION
-// ============================================
-document.addEventListener('DOMContentLoaded', function () {
-    console.log("=== GAME INITIALIZATION STARTED ===");
-    const startBtn = document.getElementById('startButton');
-    const tutorialBtn = document.getElementById('tutorialButton');
-    const wheelBtn = document.getElementById('spinningWheelButton');
-    if (!startBtn || !tutorialBtn || !wheelBtn) {
-        console.error("CRITICAL: Buttons missing!");
-        alert("Грешка: Бутоните не са намерени.");
-        return;
-    }
-    try {
-        if (typeof TRANSLATIONS === 'undefined') alert("Грешка: Преводите не са заредени.");
-        else initLanguageSystem();
-        initializeSettings();
-        initializeStartMenu();
-        initializeMoneyTreeToggle();
-        initializeSpinningWheel();
-        playStartMenuMusic();
-        const closeAudience = document.getElementById('closeAudienceModal');
-        if (closeAudience) closeAudience.onclick = closeAudienceModal;
-        const closePhone = document.getElementById('closePhoneModal');
-        if (closePhone) closePhone.onclick = closePhoneModal;
-        const audienceModal = document.getElementById('audienceJokerModal');
-        if (audienceModal) audienceModal.onclick = e => { if (e.target === audienceModal) closeAudienceModal(); };
-        const phoneModal = document.getElementById('phoneJokerModal');
-        if (phoneModal) phoneModal.onclick = e => { if (e.target === phoneModal) closePhoneModal(); };
-        document.addEventListener('click', e => {
-            if (!e.target.classList.contains('answer-btn') && !e.target.classList.contains('joker-btn')) skipAnswerReveal();
-        });
-        document.addEventListener('keydown', e => {
-            if (e.code === 'Space' && gameState.isRevealingAnswers) { e.preventDefault(); skipAnswerReveal(); }
-            if (e.code === 'Escape') { closePhoneModal(); closeAudienceModal(); }
-        });
-        window.addEventListener('resize', updateGameContainerResponsiveness);
-
-        const saveBtn = document.getElementById('saveCloudBtn');
-        if (saveBtn) saveBtn.addEventListener('click', saveCurrentThemeToCloud);
-
-        // ===== Custom Editor & Browse buttons =====
-        const openEditorButton = document.getElementById('openEditorButton');
-        const openBrowseButton = document.getElementById('openBrowseButton');
-        const backFromEditorBtn = document.getElementById('backFromEditorBtn');
-        const backFromBrowseBtn = document.getElementById('backFromBrowseBtn');
-        const saveThemeBtn = document.getElementById('saveThemeBtn');
-        const addQuestionBtn = document.getElementById('addQuestionBtn');
-        const customEditorScreen = document.getElementById('customEditorScreen');
-        const browseThemesScreen = document.getElementById('browseThemesScreen');
-        const startMenu = document.getElementById('startMenu');
-
-        if (openEditorButton && openBrowseButton && customEditorScreen && browseThemesScreen) {
-            openEditorButton.addEventListener('click', () => {
-                performTransition(() => {
-                    startMenu.style.display = 'none';
-                    customEditorScreen.style.display = 'flex';
-                    initEditor();
-                });
-            });
-
-            openBrowseButton.addEventListener('click', () => {
-                performTransition(() => {
-                    startMenu.style.display = 'none';
-                    browseThemesScreen.style.display = 'flex';
-                    fetchAndDisplayThemes('');
-                });
-            });
-
-            backFromEditorBtn.addEventListener('click', () => {
-                performTransition(() => {
-                    customEditorScreen.style.display = 'none';
-                    startMenu.style.display = 'flex';
-                });
-            });
-
-            backFromBrowseBtn.addEventListener('click', () => {
-                performTransition(() => {
-                    browseThemesScreen.style.display = 'none';
-                    startMenu.style.display = 'flex';
-                });
-            });
-
-            saveThemeBtn.addEventListener('click', saveEditorTheme);
-
-            addQuestionBtn.addEventListener('click', () => {
-                addQuestionBlock(0, '', ['', '', '', ''], 0);
-            });
-        }
-
-        const searchInput = document.getElementById('themeSearchInput');
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                fetchAndDisplayThemes(e.target.value);
-            });
-        }
-
-        // ===== MULTIPLAYER BUTTONS =====
-        const multiplayerButton = document.getElementById('multiplayerButton');
-        const createRoomButton = document.getElementById('createRoomButton');
-        const joinRoomButton = document.getElementById('joinRoomButton');
-        const backFromMultiMenuButton = document.getElementById('backFromMultiMenuButton');
-        const confirmJoinButton = document.getElementById('confirmJoinButton');
-        const backFromJoinButton = document.getElementById('backFromJoinButton');
-        const multiplayerMenuScreen = document.getElementById('multiplayerMenuScreen');
-        const joinRoomScreen = document.getElementById('joinRoomScreen');
-
-        if (multiplayerButton && multiplayerMenuScreen) {
-            multiplayerButton.addEventListener('click', () => {
-                performTransition(() => {
-                    startMenu.style.display = 'none';
-                    multiplayerMenuScreen.style.display = 'flex';
-                });
-            });
-
-            createRoomButton.addEventListener('click', () => {
-                performTransition(() => {
-                    multiplayerMenuScreen.style.display = 'none';
-                    createMultiplayerRoom();
-                });
-            });
-
-            joinRoomButton.addEventListener('click', () => {
-                performTransition(() => {
-                    multiplayerMenuScreen.style.display = 'none';
-                    joinRoomScreen.style.display = 'flex';
-                });
-            });
-
-            backFromMultiMenuButton.addEventListener('click', () => {
-                performTransition(() => {
-                    multiplayerMenuScreen.style.display = 'none';
-                    startMenu.style.display = 'flex';
-                });
-            });
-
-            confirmJoinButton.addEventListener('click', () => {
-                const code = document.getElementById('roomCodeInput').value.trim();
-                if (code) {
-                    performTransition(() => {
-                        joinMultiplayerRoom(code);
-                    });
-                }
-            });
-
-            backFromJoinButton.addEventListener('click', () => {
-                performTransition(() => {
-                    joinRoomScreen.style.display = 'none';
-                    multiplayerMenuScreen.style.display = 'flex';
-                });
-            });
-        }
-
-        console.log("=== GAME INITIALIZATION COMPLETE ===");
-    } catch (err) {
-        console.error("CRITICAL ERROR during initialization:", err);
-        alert("Възникна грешка при инициализация.");
-    }
 });
