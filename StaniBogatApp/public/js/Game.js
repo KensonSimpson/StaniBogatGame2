@@ -1403,6 +1403,7 @@ function checkAnswer(selected, correct) {
 function resetGame() {
     gameState.usedJokers = { fiftyFifty: false, audience: false, phone: false };
     document.querySelectorAll('.joker-btn').forEach(btn => { btn.disabled = false; btn.classList.remove('used'); });
+    stopUserThemeMusic();          // ← new line
     cancelAllTimers();
     removeDeathZoom();
     setTimeout(loadQuestion, 1000);
