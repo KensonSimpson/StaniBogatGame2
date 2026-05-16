@@ -1454,3 +1454,76 @@ body {
     transform: scale(1.1);
     box-shadow: 0 0 30px rgba(0,255,0,0.7);
 }
+/* =================== MULTIPLAYER ROOM SCREEN =================== */
+.multiplayer-room-screen {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: url('/images/StaniBogatBackground.jpg') no-repeat center center;
+    background-size: cover;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    z-index: 5000;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+.multiplayer-room-screen::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: -1;
+}
+.room-content {
+    background: var(--dark-bg);
+    border: 5px solid var(--gold-color);
+    border-radius: 20px;
+    padding: 25px;
+    max-width: 600px;
+    width: 95%;
+    color: white;
+    text-align: center;
+}
+.room-content h2 { color: var(--gold-color); margin-bottom: 15px; }
+.room-code {
+    font-size: 28px;
+    color: var(--gold-color);
+    letter-spacing: 5px;
+    margin: 10px 0;
+    font-weight: bold;
+}
+.player-list {
+    margin: 15px 0;
+    text-align: left;
+    max-height: 200px;
+    overflow-y: auto;
+}
+.player-list div {
+    padding: 5px 10px;
+    border-bottom: 1px solid rgba(255,215,0,0.3);
+}
+.start-room-btn {
+    margin-top: 20px;
+    background: var(--success-green);
+    color: white;
+    border: 3px solid var(--gold-color);
+    padding: 15px 40px;
+    font-size: 20px;
+    font-weight: bold;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: none; /* only host sees */
+}
+.leave-room-btn {
+    margin-top: 15px;
+    background: #cc0000;
+    color: white;
+    border: 3px solid var(--gold-color);
+    padding: 10px 30px;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 10px;
+    cursor: pointer;
+}
