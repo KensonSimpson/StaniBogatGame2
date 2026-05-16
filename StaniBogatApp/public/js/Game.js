@@ -759,6 +759,7 @@ function initializeStartMenu() {
     if (gameBack) {
         gameBack.addEventListener('click', () => {
             cancelAllTimers();
+            stopUserThemeMusic();      // ← NEW LINE: stop custom theme music when leaving
             performTransition(() => {
                 gameContainer.style.display = 'none';
                 if (moneyTree) moneyTree.style.display = 'none';
