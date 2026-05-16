@@ -1669,7 +1669,7 @@ function stopUserThemeMusic() {
 }
 
 // ============================================
-// MULTIPLAYER MODULE (Trystero P2P)
+// MULTIPLAYER MODULE (Trystero P2P) – FIXED
 // ============================================
 let room = null;
 let mpPlayers = [];
@@ -1682,6 +1682,7 @@ let mpAnswers = {};
 let mpRoomCode = '';
 let mpPlayerName = '';
 
+// Room screen (injected into the page)
 const roomScreen = document.createElement('div');
 roomScreen.id = 'mpRoomScreen';
 roomScreen.className = 'multiplayer-room-screen';
@@ -1705,11 +1706,18 @@ async function createMultiplayerRoom() {
         return;
     }
     mpPlayerName = prompt('Вашето име:') || 'Player';
-    room = trystero.joinRoom({ appId: 'stanibogat-quiz' }, 'stanibogat-' + Date.now().toString(36));
+    try {
+        room = trystero.joinRoom('stanibogat-quiz');
+    } catch (err) {
+        alert('Грешка при създаване на стаята: ' + err.message);
+        return;
+    }
     isHost = true;
 
     setupRoomEvents();
-    mpRoomCode = room.roomId.substring(0, 6).toUpperCase();
+    // Use full room ID, but show only first 6 characters
+    const fullRoomId = room.roomId;
+    mpRoomCode = fullRoomId.substring(0, 6).toUpperCase();
     document.getElementById('displayRoomCode').textContent = mpRoomCode;
 
     mpPlayers = [{ id: 'host', name: mpPlayerName, emoji: '👑', isHost: true }];
@@ -1728,7 +1736,12 @@ async function joinMultiplayerRoom(code) {
         return;
     }
     mpPlayerName = prompt('Вашето име:') || 'Player';
-    room = trystero.joinRoom({ appId: 'stanibogat-quiz' }, code.toLowerCase());
+    try {
+        room = trystero.joinRoom('stanibogat-quiz', code.toLowerCase());
+    } catch (err) {
+        alert('Грешка при присъединяване: ' + err.message);
+        return;
+    }
     isHost = false;
 
     setupRoomEvents();
