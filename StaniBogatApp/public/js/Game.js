@@ -1700,13 +1700,15 @@ document.body.appendChild(roomScreen);
 const startMpGameBtn = document.getElementById('startMpGameBtn');
 const leaveRoomBtn = document.getElementById('leaveRoomBtn');
 
+// ---- Create Room (Host) ----
 async function createMultiplayerRoom() {
     if (typeof trystero === 'undefined' || typeof trystero.joinRoom !== 'function') {
         alert('Мултиплеър библиотеката не е заредена. Опитайте отново.');
         return;
     }
     mpPlayerName = prompt('Вашето име:') || 'Player';
-    // Generate a random room code (6 uppercase letters)
+
+    // Generate a room code and use it as the roomId
     const generatedCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     try {
         room = trystero.joinRoom({ appId: 'stanibogat-quiz' }, generatedCode);
@@ -1718,7 +1720,7 @@ async function createMultiplayerRoom() {
 
     setupRoomEvents();
     document.getElementById('displayRoomCode').textContent = generatedCode;
-    mpRoomCode = generatedCode;   // store for later use (joining)
+    mpRoomCode = generatedCode;   // store for sharing
 
     mpPlayers = [{ id: 'host', name: mpPlayerName, emoji: '👑', isHost: true }];
     updatePlayerListUI();
@@ -1730,6 +1732,7 @@ async function createMultiplayerRoom() {
     room.broadcast({ type: 'HOST_INFO', name: mpPlayerName });
 }
 
+// ---- Join Room ----
 async function joinMultiplayerRoom(code) {
     if (typeof trystero === 'undefined' || typeof trystero.joinRoom !== 'function') {
         alert('Мултиплеър библиотеката не е заредена. Опитайте отново.');
@@ -1753,7 +1756,6 @@ async function joinMultiplayerRoom(code) {
     room.broadcast({ type: 'PLAYER_JOIN', name: mpPlayerName, id: trystero.selfId });
     room.broadcast({ type: 'REQUEST_PLAYER_LIST' });
 }
-
 function setupRoomEvents() {
     room.onPeerJoin(peerId => console.log('Peer joined:', peerId));
     room.onPeerLeave(peerId => {
