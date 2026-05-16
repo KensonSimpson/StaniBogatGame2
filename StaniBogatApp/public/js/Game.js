@@ -759,7 +759,7 @@ function initializeStartMenu() {
     if (gameBack) {
         gameBack.addEventListener('click', () => {
             cancelAllTimers();
-            stopUserThemeMusic();      // ← NEW LINE: stop custom theme music when leaving
+            stopUserThemeMusic();
             performTransition(() => {
                 gameContainer.style.display = 'none';
                 if (moneyTree) moneyTree.style.display = 'none';
@@ -1404,7 +1404,7 @@ function checkAnswer(selected, correct) {
 function resetGame() {
     gameState.usedJokers = { fiftyFifty: false, audience: false, phone: false };
     document.querySelectorAll('.joker-btn').forEach(btn => { btn.disabled = false; btn.classList.remove('used'); });
-    stopUserThemeMusic();          // ← new line
+    stopUserThemeMusic();
     cancelAllTimers();
     removeDeathZoom();
     setTimeout(loadQuestion, 1000);
@@ -1445,9 +1445,6 @@ async function saveCurrentThemeToCloud() {
 }
 
 // ============================================
-// INITIALIZATION
-// ============================================
-// ============================================
 // CUSTOM THEME EDITOR
 // ============================================
 let editorQuestionCount = 0;
@@ -1457,12 +1454,10 @@ function initEditor(questions = null) {
     if (!container) return;
     container.innerHTML = '';
     if (questions && questions.length > 0) {
-        // load existing questions (for editing)
         questions.forEach((q, idx) => {
             addQuestionBlock(idx, q.question, q.answers, q.correct);
         });
     } else {
-        // start with 1 empty question
         addQuestionBlock(0, '', ['', '', '', ''], 0);
     }
     document.getElementById('themeNameInput').value = '';
@@ -1509,7 +1504,6 @@ async function saveEditorTheme() {
     }
     const themeName = nameInput.value.trim();
 
-    // Read the optional music URL
     const musicInput = document.getElementById('themeMusicInput');
     const musicUrl = musicInput ? musicInput.value.trim() : '';
 
@@ -1521,7 +1515,6 @@ async function saveEditorTheme() {
         const correctSelect = block.querySelector('.correct-select');
         if (questionText === '' || answerInputs[0].value.trim() === '' || answerInputs[1].value.trim() === '' ||
             answerInputs[2].value.trim() === '' || answerInputs[3].value.trim() === '') {
-            // skip incomplete question
             return;
         }
         questionsData.push({
@@ -1544,7 +1537,7 @@ async function saveEditorTheme() {
         name: themeName,
         questionsData: questionsData,
         category: 'user',
-        musicUrl: musicUrl       // ← send music URL to the API
+        musicUrl: musicUrl
     };
 
     try {
@@ -1556,7 +1549,6 @@ async function saveEditorTheme() {
         const result = await response.json();
         if (result.success) {
             alert(`✅ Темата е запазена с ID ${result.id}!`);
-            // clear editor
             document.getElementById('questionsContainer').innerHTML = '';
             nameInput.value = '';
             if (musicInput) musicInput.value = '';
@@ -1568,6 +1560,7 @@ async function saveEditorTheme() {
         alert('❌ Неуспешна връзка с API: ' + err.message);
     }
 }
+
 // ============================================
 // BROWSE UPLOADED THEMES
 // ============================================
@@ -1579,7 +1572,6 @@ async function fetchAndDisplayThemes(searchTerm = '') {
     try {
         const response = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/themes');
         const themes = await response.json();
-        // Filter by search term
         const filtered = themes.filter(t => {
             const lowerSearch = searchTerm.toLowerCase();
             return t.id.toString().includes(lowerSearch) || t.name.toLowerCase().includes(lowerSearch);
@@ -1607,7 +1599,6 @@ async function fetchAndDisplayThemes(searchTerm = '') {
     }
 }
 
-// This function loads a user theme directly into the game (same flow as built-in themes)
 async function loadUserTheme(themeId) {
     const response = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/themes');
     const themes = await response.json();
@@ -1622,7 +1613,6 @@ async function loadUserTheme(themeId) {
         return;
     }
 
-    // Prepare global state
     currentTheme = theme.name;
     currentThemeQuestions = questions;
     currentTotalQuestions = questions.length;
@@ -1631,10 +1621,8 @@ async function loadUserTheme(themeId) {
     document.querySelectorAll('.joker-btn').forEach(b => { b.disabled = false; b.classList.remove('used'); });
     cancelAllTimers();
 
-    // Hide browse screen
     document.getElementById('browseThemesScreen').style.display = 'none';
 
-    // Show game container
     const gameContainer = document.getElementById('gameContainer');
     gameContainer.style.display = 'block';
     gameContainer.style.opacity = '1';
@@ -1657,12 +1645,11 @@ async function loadUserTheme(themeId) {
     stopThemeMusic();
     removeMinecraftTheme();
 
-    // ---- Handle custom music ----
-    stopUserThemeMusic();   // stop any previous custom music
+    stopUserThemeMusic();
     if (theme.musicUrl) {
         userThemeAudio = new Audio(theme.musicUrl);
         userThemeAudio.loop = true;
-        userThemeAudio.volume = settings.musicVolume;   // respect global volume
+        userThemeAudio.volume = settings.musicVolume;
         userThemeAudio.play().catch(e => console.warn('User theme music failed to play:', e));
     }
 
@@ -1670,6 +1657,247 @@ async function loadUserTheme(themeId) {
     if (answersContainer) answersContainer.innerHTML = '';
     loadQuestion();
 }
+
+let userThemeAudio = null;
+
+function stopUserThemeMusic() {
+    if (userThemeAudio) {
+        userThemeAudio.pause();
+        userThemeAudio.remove();
+        userThemeAudio = null;
+    }
+}
+
+// ============================================
+// MULTIPLAYER MODULE (Trystero P2P)
+// ============================================
+let room = null;
+let mpPlayers = [];
+let isHost = false;
+let mpGameStarted = false;
+let mpCurrentQuestion = 0;
+let mpQuestions = [];
+let mpScores = {};
+let mpAnswers = {};
+let mpRoomCode = '';
+let mpPlayerName = '';
+
+const roomScreen = document.createElement('div');
+roomScreen.id = 'mpRoomScreen';
+roomScreen.className = 'multiplayer-room-screen';
+roomScreen.innerHTML = `
+    <div class="room-content">
+        <h2>🎮 Стая</h2>
+        <p>Код: <span class="room-code" id="displayRoomCode">------</span></p>
+        <div class="player-list" id="playerList"></div>
+        <button id="startMpGameBtn" class="start-room-btn">▶ Старт</button>
+        <button id="leaveRoomBtn" class="leave-room-btn">🚪 Излез</button>
+    </div>
+`;
+document.body.appendChild(roomScreen);
+
+const startMpGameBtn = document.getElementById('startMpGameBtn');
+const leaveRoomBtn = document.getElementById('leaveRoomBtn');
+
+async function createMultiplayerRoom() {
+    mpPlayerName = prompt('Вашето име:') || 'Player';
+    room = trystero.joinRoom({ appId: 'stanibogat-quiz' }, 'stanibogat-' + Date.now().toString(36));
+    isHost = true;
+
+    setupRoomEvents();
+    mpRoomCode = room.roomId.substring(0, 6).toUpperCase();
+    document.getElementById('displayRoomCode').textContent = mpRoomCode;
+
+    mpPlayers = [{ id: 'host', name: mpPlayerName, emoji: '👑', isHost: true }];
+    updatePlayerListUI();
+
+    startMpGameBtn.style.display = 'inline-block';
+    document.getElementById('multiplayerMenuScreen').style.display = 'none';
+    roomScreen.style.display = 'flex';
+
+    room.broadcast({ type: 'HOST_INFO', name: mpPlayerName });
+}
+
+async function joinMultiplayerRoom(code) {
+    mpPlayerName = prompt('Вашето име:') || 'Player';
+    room = trystero.joinRoom({ appId: 'stanibogat-quiz' }, code.toLowerCase());
+    isHost = false;
+
+    setupRoomEvents();
+    document.getElementById('displayRoomCode').textContent = code.toUpperCase();
+    startMpGameBtn.style.display = 'none';
+    document.getElementById('joinRoomScreen').style.display = 'none';
+    roomScreen.style.display = 'flex';
+
+    room.broadcast({ type: 'PLAYER_JOIN', name: mpPlayerName, id: trystero.selfId });
+    room.broadcast({ type: 'REQUEST_PLAYER_LIST' });
+}
+
+function setupRoomEvents() {
+    room.onPeerJoin(peerId => console.log('Peer joined:', peerId));
+    room.onPeerLeave(peerId => {
+        mpPlayers = mpPlayers.filter(p => p.id !== peerId);
+        updatePlayerListUI();
+    });
+    room.onMessage((data, peerId) => {
+        switch (data.type) {
+            case 'HOST_INFO':
+                break;
+            case 'PLAYER_JOIN':
+                mpPlayers.push({ id: data.id || peerId, name: data.name, emoji: '🎮', isHost: false });
+                updatePlayerListUI();
+                if (isHost) broadcastPlayerList();
+                break;
+            case 'REQUEST_PLAYER_LIST':
+                if (isHost) broadcastPlayerList();
+                break;
+            case 'PLAYER_LIST':
+                mpPlayers = data.players;
+                updatePlayerListUI();
+                break;
+            case 'START_GAME':
+                startMpGame(data.questions);
+                break;
+            case 'QUESTION':
+                displayMpQuestion(data);
+                break;
+            case 'ANSWER':
+                handleMpAnswer(peerId, data.answerIndex);
+                break;
+            case 'ROUND_RESULT':
+                showMpRoundResult(data);
+                break;
+            case 'GAME_ENDED':
+                endMpGame(data.scores);
+                break;
+        }
+    });
+}
+
+function broadcastPlayerList() {
+    room.broadcast({ type: 'PLAYER_LIST', players: mpPlayers });
+}
+
+function updatePlayerListUI() {
+    const list = document.getElementById('playerList');
+    if (!list) return;
+    list.innerHTML = mpPlayers.map(p => `<div>${p.emoji} ${p.name} ${p.isHost ? '(Host)' : ''}</div>`).join('');
+}
+
+startMpGameBtn.addEventListener('click', () => {
+    if (!isHost || mpGameStarted) return;
+    const themeKey = prompt('Въведете име на тема (Стани Богат, Математика, …) или ID на потребителска тема:');
+    if (!themeKey) return;
+    let questions = null;
+    if (QUESTIONS_DATA[themeKey]) {
+        questions = QUESTIONS_DATA[themeKey]['bg'] || QUESTIONS_DATA[themeKey][Object.keys(QUESTIONS_DATA[themeKey])[0]];
+    } else {
+        fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/themes')
+            .then(r => r.json())
+            .then(themes => {
+                const t = themes.find(th => th.id == themeKey);
+                if (t) {
+                    questions = JSON.parse(t.questionsData);
+                    startMpGame(questions);
+                } else alert('Темата не е намерена.');
+            })
+            .catch(() => alert('Грешка при зареждане на темата.'));
+        return;
+    }
+    if (!questions) { alert('Темата не е намерена.'); return; }
+    startMpGame(questions);
+});
+
+function startMpGame(questions) {
+    mpGameStarted = true;
+    mpQuestions = questions;
+    mpCurrentQuestion = 0;
+    mpScores = {};
+    mpPlayers.forEach(p => mpScores[p.id] = 0);
+    room.broadcast({ type: 'START_GAME', questions });
+    sendNextMpQuestion();
+}
+
+function sendNextMpQuestion() {
+    if (mpCurrentQuestion >= mpQuestions.length) {
+        room.broadcast({ type: 'GAME_ENDED', scores: mpScores });
+        endMpGame(mpScores);
+        return;
+    }
+    const q = mpQuestions[mpCurrentQuestion];
+    room.broadcast({ type: 'QUESTION', index: mpCurrentQuestion, question: q.question, answers: q.answers, timeLimit: 15 });
+    mpAnswers = {};
+    setTimeout(() => finishMpQuestion(), 15000);
+}
+
+function displayMpQuestion(data) {
+    document.getElementById('questionText').textContent = data.question;
+    const answersContainer = document.getElementById('answersContainer');
+    answersContainer.innerHTML = '';
+    data.answers.forEach((ans, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'answer-btn';
+        btn.textContent = `${String.fromCharCode(65 + idx)}) ${ans}`;
+        btn.onclick = () => {
+            room.broadcast({ type: 'ANSWER', answerIndex: idx });
+            btn.disabled = true;
+        };
+        answersContainer.appendChild(btn);
+    });
+}
+
+function handleMpAnswer(playerId, answerIndex) {
+    if (!isHost) return;
+    mpAnswers[playerId] = answerIndex;
+    if (Object.keys(mpAnswers).length === mpPlayers.length) {
+        finishMpQuestion();
+    }
+}
+
+function finishMpQuestion() {
+    const q = mpQuestions[mpCurrentQuestion];
+    const correct = q.correct;
+    const results = mpPlayers.map(p => ({
+        name: p.name,
+        answer: mpAnswers[p.id],
+        correct: mpAnswers[p.id] === correct
+    }));
+    results.forEach(r => {
+        if (r.correct) {
+            const player = mpPlayers.find(p => p.name === r.name);
+            if (player) mpScores[player.id] = (mpScores[player.id] || 0) + 1;
+        }
+    });
+    room.broadcast({ type: 'ROUND_RESULT', correct, results, scores: mpScores });
+    mpCurrentQuestion++;
+    setTimeout(() => sendNextMpQuestion(), 3000);
+}
+
+function showMpRoundResult(data) {
+    alert(`Верен отговор: ${String.fromCharCode(65 + data.correct)})\n` +
+          data.results.map(r => `${r.name}: ${r.correct ? '✅' : '❌'}`).join('\n'));
+}
+
+function endMpGame(scores) {
+    const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+    const winner = sorted[0];
+    alert(`🏆 Победител: ${mpPlayers.find(p => p.id === winner[0])?.name || 'Unknown'} с ${winner[1]} точки!`);
+    mpGameStarted = false;
+    roomScreen.style.display = 'none';
+    document.getElementById('multiplayerMenuScreen').style.display = 'flex';
+    room = null;
+}
+
+leaveRoomBtn.addEventListener('click', () => {
+    if (room) room.broadcast({ type: 'PLAYER_LEAVE', id: trystero.selfId });
+    room = null;
+    roomScreen.style.display = 'none';
+    document.getElementById('multiplayerMenuScreen').style.display = 'flex';
+});
+
+// ============================================
+// INITIALIZATION
+// ============================================
 document.addEventListener('DOMContentLoaded', function () {
     console.log("=== GAME INITIALIZATION STARTED ===");
     const startBtn = document.getElementById('startButton');
@@ -1708,7 +1936,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const saveBtn = document.getElementById('saveCloudBtn');
         if (saveBtn) saveBtn.addEventListener('click', saveCurrentThemeToCloud);
 
-        // ===== NEW: Custom Editor & Browse buttons =====
+        // ===== Custom Editor & Browse buttons =====
         const openEditorButton = document.getElementById('openEditorButton');
         const openBrowseButton = document.getElementById('openBrowseButton');
         const backFromEditorBtn = document.getElementById('backFromEditorBtn');
@@ -1757,11 +1985,66 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        // Search bar for browse screen
         const searchInput = document.getElementById('themeSearchInput');
         if (searchInput) {
             searchInput.addEventListener('input', (e) => {
                 fetchAndDisplayThemes(e.target.value);
+            });
+        }
+
+        // ===== MULTIPLAYER BUTTONS =====
+        const multiplayerButton = document.getElementById('multiplayerButton');
+        const createRoomButton = document.getElementById('createRoomButton');
+        const joinRoomButton = document.getElementById('joinRoomButton');
+        const backFromMultiMenuButton = document.getElementById('backFromMultiMenuButton');
+        const confirmJoinButton = document.getElementById('confirmJoinButton');
+        const backFromJoinButton = document.getElementById('backFromJoinButton');
+        const multiplayerMenuScreen = document.getElementById('multiplayerMenuScreen');
+        const joinRoomScreen = document.getElementById('joinRoomScreen');
+
+        if (multiplayerButton && multiplayerMenuScreen) {
+            multiplayerButton.addEventListener('click', () => {
+                performTransition(() => {
+                    startMenu.style.display = 'none';
+                    multiplayerMenuScreen.style.display = 'flex';
+                });
+            });
+
+            createRoomButton.addEventListener('click', () => {
+                performTransition(() => {
+                    multiplayerMenuScreen.style.display = 'none';
+                    createMultiplayerRoom();
+                });
+            });
+
+            joinRoomButton.addEventListener('click', () => {
+                performTransition(() => {
+                    multiplayerMenuScreen.style.display = 'none';
+                    joinRoomScreen.style.display = 'flex';
+                });
+            });
+
+            backFromMultiMenuButton.addEventListener('click', () => {
+                performTransition(() => {
+                    multiplayerMenuScreen.style.display = 'none';
+                    startMenu.style.display = 'flex';
+                });
+            });
+
+            confirmJoinButton.addEventListener('click', () => {
+                const code = document.getElementById('roomCodeInput').value.trim();
+                if (code) {
+                    performTransition(() => {
+                        joinMultiplayerRoom(code);
+                    });
+                }
+            });
+
+            backFromJoinButton.addEventListener('click', () => {
+                performTransition(() => {
+                    joinRoomScreen.style.display = 'none';
+                    multiplayerMenuScreen.style.display = 'flex';
+                });
             });
         }
 
@@ -1771,12 +2054,3 @@ document.addEventListener('DOMContentLoaded', function () {
         alert("Възникна грешка при инициализация.");
     }
 });
-let userThemeAudio = null;
-
-function stopUserThemeMusic() {
-    if (userThemeAudio) {
-        userThemeAudio.pause();
-        userThemeAudio.remove();
-        userThemeAudio = null;
-    }
-}
