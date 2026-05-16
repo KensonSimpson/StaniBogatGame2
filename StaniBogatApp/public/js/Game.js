@@ -1687,11 +1687,11 @@ roomScreen.id = 'mpRoomScreen';
 roomScreen.className = 'multiplayer-room-screen';
 roomScreen.innerHTML = `
     <div class="room-content">
-        <h2>🎮 Стая</h2>
+        <h2>Стая</h2>
         <p>Код: <span class="room-code" id="displayRoomCode">------</span></p>
         <div class="player-list" id="playerList"></div>
-        <button id="startMpGameBtn" class="start-room-btn">▶ Старт</button>
-        <button id="leaveRoomBtn" class="leave-room-btn">🚪 Излез</button>
+        <button id="startMpGameBtn" class="start-room-btn">Старт</button>
+        <button id="leaveRoomBtn" class="leave-room-btn">Излез</button>
     </div>
 `;
 document.body.appendChild(roomScreen);
@@ -1700,6 +1700,10 @@ const startMpGameBtn = document.getElementById('startMpGameBtn');
 const leaveRoomBtn = document.getElementById('leaveRoomBtn');
 
 async function createMultiplayerRoom() {
+    if (typeof trystero === 'undefined') {
+        alert('Мултиплеър библиотеката не е заредена. Опитайте отново.');
+        return;
+    }
     mpPlayerName = prompt('Вашето име:') || 'Player';
     room = trystero.joinRoom({ appId: 'stanibogat-quiz' }, 'stanibogat-' + Date.now().toString(36));
     isHost = true;
@@ -1719,6 +1723,10 @@ async function createMultiplayerRoom() {
 }
 
 async function joinMultiplayerRoom(code) {
+    if (typeof trystero === 'undefined') {
+        alert('Мултиплеър библиотеката не е заредена. Опитайте отново.');
+        return;
+    }
     mpPlayerName = prompt('Вашето име:') || 'Player';
     room = trystero.joinRoom({ appId: 'stanibogat-quiz' }, code.toLowerCase());
     isHost = false;
@@ -1881,7 +1889,7 @@ function showMpRoundResult(data) {
 function endMpGame(scores) {
     const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
     const winner = sorted[0];
-    alert(`🏆 Победител: ${mpPlayers.find(p => p.id === winner[0])?.name || 'Unknown'} с ${winner[1]} точки!`);
+    alert(`Победител: ${mpPlayers.find(p => p.id === winner[0])?.name || 'Unknown'} с ${winner[1]} точки!`);
     mpGameStarted = false;
     roomScreen.style.display = 'none';
     document.getElementById('multiplayerMenuScreen').style.display = 'flex';
@@ -1893,164 +1901,4 @@ leaveRoomBtn.addEventListener('click', () => {
     room = null;
     roomScreen.style.display = 'none';
     document.getElementById('multiplayerMenuScreen').style.display = 'flex';
-});
-
-// ============================================
-// INITIALIZATION
-// ============================================
-document.addEventListener('DOMContentLoaded', function () {
-    console.log("=== GAME INITIALIZATION STARTED ===");
-    const startBtn = document.getElementById('startButton');
-    const tutorialBtn = document.getElementById('tutorialButton');
-    const wheelBtn = document.getElementById('spinningWheelButton');
-    if (!startBtn || !tutorialBtn || !wheelBtn) {
-        console.error("CRITICAL: Buttons missing!");
-        alert("Грешка: Бутоните не са намерени.");
-        return;
-    }
-    try {
-        if (typeof TRANSLATIONS === 'undefined') alert("Грешка: Преводите не са заредени.");
-        else initLanguageSystem();
-        initializeSettings();
-        initializeStartMenu();
-        initializeMoneyTreeToggle();
-        initializeSpinningWheel();
-        playStartMenuMusic();
-        const closeAudience = document.getElementById('closeAudienceModal');
-        if (closeAudience) closeAudience.onclick = closeAudienceModal;
-        const closePhone = document.getElementById('closePhoneModal');
-        if (closePhone) closePhone.onclick = closePhoneModal;
-        const audienceModal = document.getElementById('audienceJokerModal');
-        if (audienceModal) audienceModal.onclick = e => { if (e.target === audienceModal) closeAudienceModal(); };
-        const phoneModal = document.getElementById('phoneJokerModal');
-        if (phoneModal) phoneModal.onclick = e => { if (e.target === phoneModal) closePhoneModal(); };
-        document.addEventListener('click', e => {
-            if (!e.target.classList.contains('answer-btn') && !e.target.classList.contains('joker-btn')) skipAnswerReveal();
-        });
-        document.addEventListener('keydown', e => {
-            if (e.code === 'Space' && gameState.isRevealingAnswers) { e.preventDefault(); skipAnswerReveal(); }
-            if (e.code === 'Escape') { closePhoneModal(); closeAudienceModal(); }
-        });
-        window.addEventListener('resize', updateGameContainerResponsiveness);
-
-        const saveBtn = document.getElementById('saveCloudBtn');
-        if (saveBtn) saveBtn.addEventListener('click', saveCurrentThemeToCloud);
-
-        // ===== Custom Editor & Browse buttons =====
-        const openEditorButton = document.getElementById('openEditorButton');
-        const openBrowseButton = document.getElementById('openBrowseButton');
-        const backFromEditorBtn = document.getElementById('backFromEditorBtn');
-        const backFromBrowseBtn = document.getElementById('backFromBrowseBtn');
-        const saveThemeBtn = document.getElementById('saveThemeBtn');
-        const addQuestionBtn = document.getElementById('addQuestionBtn');
-        const customEditorScreen = document.getElementById('customEditorScreen');
-        const browseThemesScreen = document.getElementById('browseThemesScreen');
-        const startMenu = document.getElementById('startMenu');
-
-        if (openEditorButton && openBrowseButton && customEditorScreen && browseThemesScreen) {
-            openEditorButton.addEventListener('click', () => {
-                performTransition(() => {
-                    startMenu.style.display = 'none';
-                    customEditorScreen.style.display = 'flex';
-                    initEditor();
-                });
-            });
-
-            openBrowseButton.addEventListener('click', () => {
-                performTransition(() => {
-                    startMenu.style.display = 'none';
-                    browseThemesScreen.style.display = 'flex';
-                    fetchAndDisplayThemes('');
-                });
-            });
-
-            backFromEditorBtn.addEventListener('click', () => {
-                performTransition(() => {
-                    customEditorScreen.style.display = 'none';
-                    startMenu.style.display = 'flex';
-                });
-            });
-
-            backFromBrowseBtn.addEventListener('click', () => {
-                performTransition(() => {
-                    browseThemesScreen.style.display = 'none';
-                    startMenu.style.display = 'flex';
-                });
-            });
-
-            saveThemeBtn.addEventListener('click', saveEditorTheme);
-
-            addQuestionBtn.addEventListener('click', () => {
-                addQuestionBlock(0, '', ['', '', '', ''], 0);
-            });
-        }
-
-        const searchInput = document.getElementById('themeSearchInput');
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                fetchAndDisplayThemes(e.target.value);
-            });
-        }
-
-        // ===== MULTIPLAYER BUTTONS =====
-        const multiplayerButton = document.getElementById('multiplayerButton');
-        const createRoomButton = document.getElementById('createRoomButton');
-        const joinRoomButton = document.getElementById('joinRoomButton');
-        const backFromMultiMenuButton = document.getElementById('backFromMultiMenuButton');
-        const confirmJoinButton = document.getElementById('confirmJoinButton');
-        const backFromJoinButton = document.getElementById('backFromJoinButton');
-        const multiplayerMenuScreen = document.getElementById('multiplayerMenuScreen');
-        const joinRoomScreen = document.getElementById('joinRoomScreen');
-
-        if (multiplayerButton && multiplayerMenuScreen) {
-            multiplayerButton.addEventListener('click', () => {
-                performTransition(() => {
-                    startMenu.style.display = 'none';
-                    multiplayerMenuScreen.style.display = 'flex';
-                });
-            });
-
-            createRoomButton.addEventListener('click', () => {
-                performTransition(() => {
-                    multiplayerMenuScreen.style.display = 'none';
-                    createMultiplayerRoom();
-                });
-            });
-
-            joinRoomButton.addEventListener('click', () => {
-                performTransition(() => {
-                    multiplayerMenuScreen.style.display = 'none';
-                    joinRoomScreen.style.display = 'flex';
-                });
-            });
-
-            backFromMultiMenuButton.addEventListener('click', () => {
-                performTransition(() => {
-                    multiplayerMenuScreen.style.display = 'none';
-                    startMenu.style.display = 'flex';
-                });
-            });
-
-            confirmJoinButton.addEventListener('click', () => {
-                const code = document.getElementById('roomCodeInput').value.trim();
-                if (code) {
-                    performTransition(() => {
-                        joinMultiplayerRoom(code);
-                    });
-                }
-            });
-
-            backFromJoinButton.addEventListener('click', () => {
-                performTransition(() => {
-                    joinRoomScreen.style.display = 'none';
-                    multiplayerMenuScreen.style.display = 'flex';
-                });
-            });
-        }
-
-        console.log("=== GAME INITIALIZATION COMPLETE ===");
-    } catch (err) {
-        console.error("CRITICAL ERROR during initialization:", err);
-        alert("Възникна грешка при инициализация.");
-    }
 });
