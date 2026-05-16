@@ -1706,8 +1706,10 @@ async function createMultiplayerRoom() {
         return;
     }
     mpPlayerName = prompt('Вашето име:') || 'Player';
+    // Generate a random room code (6 uppercase letters)
+    const generatedCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     try {
-        room = trystero.joinRoom({ appId: 'stanibogat-quiz' });
+        room = trystero.joinRoom({ appId: 'stanibogat-quiz' }, generatedCode);
     } catch (err) {
         alert('Грешка при създаване на стаята: ' + err.message);
         return;
@@ -1715,9 +1717,8 @@ async function createMultiplayerRoom() {
     isHost = true;
 
     setupRoomEvents();
-    const fullRoomId = room.roomId;
-    mpRoomCode = fullRoomId.substring(0, 6).toUpperCase();
-    document.getElementById('displayRoomCode').textContent = mpRoomCode;
+    document.getElementById('displayRoomCode').textContent = generatedCode;
+    mpRoomCode = generatedCode;   // store for later use (joining)
 
     mpPlayers = [{ id: 'host', name: mpPlayerName, emoji: '👑', isHost: true }];
     updatePlayerListUI();
