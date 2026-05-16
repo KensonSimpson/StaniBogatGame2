@@ -1750,3 +1750,12 @@ document.addEventListener('DOMContentLoaded', function () {
         alert("Възникна грешка при инициализация.");
     }
 });
+let userThemeAudio = null;
+
+function stopUserThemeMusic() {
+    if (userThemeAudio) {
+        userThemeAudio.pause();
+        userThemeAudio.remove();
+        userThemeAudio = null;
+    }
+}
