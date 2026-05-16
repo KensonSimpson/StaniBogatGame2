@@ -1506,13 +1506,19 @@ async function saveEditorTheme() {
         return;
     }
     const themeName = nameInput.value.trim();
+
+    // Read the optional music URL
+    const musicInput = document.getElementById('themeMusicInput');
+    const musicUrl = musicInput ? musicInput.value.trim() : '';
+
     const blocks = document.querySelectorAll('.question-block');
     const questionsData = [];
     blocks.forEach(block => {
         const questionText = block.querySelector('.question-input').value.trim();
         const answerInputs = block.querySelectorAll('.answer-input');
         const correctSelect = block.querySelector('.correct-select');
-        if (questionText === '' || answerInputs[0].value.trim() === '' || answerInputs[1].value.trim() === '' || answerInputs[2].value.trim() === '' || answerInputs[3].value.trim() === '') {
+        if (questionText === '' || answerInputs[0].value.trim() === '' || answerInputs[1].value.trim() === '' ||
+            answerInputs[2].value.trim() === '' || answerInputs[3].value.trim() === '') {
             // skip incomplete question
             return;
         }
@@ -1532,11 +1538,11 @@ async function saveEditorTheme() {
         return;
     }
 
-    // Save via the existing worker (same as saveCurrentThemeToCloud, but with these questions)
     const payload = {
         name: themeName,
         questionsData: questionsData,
-        category: 'user' // could be extended later
+        category: 'user',
+        musicUrl: musicUrl       // ← send music URL to the API
     };
 
     try {
@@ -1551,6 +1557,7 @@ async function saveEditorTheme() {
             // clear editor
             document.getElementById('questionsContainer').innerHTML = '';
             nameInput.value = '';
+            if (musicInput) musicInput.value = '';
             initEditor();
         } else {
             alert('❌ Грешка при запазване: ' + (result.error || 'неизвестна'));
@@ -1559,7 +1566,6 @@ async function saveEditorTheme() {
         alert('❌ Неуспешна връзка с API: ' + err.message);
     }
 }
-
 // ============================================
 // BROWSE UPLOADED THEMES
 // ============================================
@@ -1613,7 +1619,8 @@ async function loadUserTheme(themeId) {
         alert('Темата не съдържа валидни въпроси.');
         return;
     }
-    // Prepare global state as if a built-in theme was chosen
+
+    // Prepare global state
     currentTheme = theme.name;
     currentThemeQuestions = questions;
     currentTotalQuestions = questions.length;
@@ -1621,8 +1628,10 @@ async function loadUserTheme(themeId) {
     gameState.usedJokers = { fiftyFifty: false, audience: false, phone: false };
     document.querySelectorAll('.joker-btn').forEach(b => { b.disabled = false; b.classList.remove('used'); });
     cancelAllTimers();
+
     // Hide browse screen
     document.getElementById('browseThemesScreen').style.display = 'none';
+
     // Show game container
     const gameContainer = document.getElementById('gameContainer');
     gameContainer.style.display = 'block';
@@ -1645,6 +1654,16 @@ async function loadUserTheme(themeId) {
     setThemeBackground(null);
     stopThemeMusic();
     removeMinecraftTheme();
+
+    // ---- Handle custom music ----
+    stopUserThemeMusic();   // stop any previous custom music
+    if (theme.musicUrl) {
+        userThemeAudio = new Audio(theme.musicUrl);
+        userThemeAudio.loop = true;
+        userThemeAudio.volume = settings.musicVolume;   // respect global volume
+        userThemeAudio.play().catch(e => console.warn('User theme music failed to play:', e));
+    }
+
     const answersContainer = document.getElementById('answersContainer');
     if (answersContainer) answersContainer.innerHTML = '';
     loadQuestion();
