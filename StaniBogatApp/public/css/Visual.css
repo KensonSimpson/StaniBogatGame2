@@ -1527,3 +1527,133 @@ body {
     border-radius: 10px;
     cursor: pointer;
 }
+/* =================== MULTIPLAYER ROOM (redesigned) =================== */
+.multiplayer-room-screen {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: url('/images/StaniBogatBackground.jpg') no-repeat center center;
+    background-size: cover;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    z-index: 5000;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+.multiplayer-room-screen::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: -1;
+}
+.room-content {
+    background: var(--dark-bg);
+    border: 5px solid var(--gold-color);
+    border-radius: 20px;
+    padding: 25px;
+    max-width: 650px;
+    width: 95%;
+    color: white;
+    text-align: center;
+    position: relative;
+}
+.room-content h2 { color: var(--gold-color); margin-bottom: 10px; }
+.room-code {
+    font-size: 28px;
+    color: var(--gold-color);
+    letter-spacing: 5px;
+    margin: 5px 0 15px;
+    font-weight: bold;
+}
+.room-name-input {
+    width: 80%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 2px solid var(--gold-color);
+    background: rgba(0,0,50,0.8);
+    color: white;
+    font-size: 18px;
+    text-align: center;
+    margin-bottom: 15px;
+}
+.room-name-input::placeholder {
+    color: #aaa;
+}
+.player-count {
+    color: #ccc;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+.player-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin: 15px 0;
+    max-height: 200px;
+    overflow-y: auto;
+}
+.player-card {
+    background: rgba(0, 0, 100, 0.6);
+    border: 2px solid var(--gold-color);
+    border-radius: 10px;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: bold;
+    transition: all 0.2s;
+}
+.player-card.host-card {
+    border-color: #ffd700;
+    box-shadow: 0 0 10px rgba(255,215,0,0.4);
+}
+.theme-browser-inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    max-height: 200px;
+    overflow-y: auto;
+    margin: 10px 0;
+}
+.theme-chip {
+    background: var(--primary-blue);
+    color: white;
+    border: 2px solid var(--gold-color);
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+.theme-chip:hover {
+    background: linear-gradient(135deg, #2e58ff, #4f90ff);
+    transform: scale(1.05);
+}
+.start-room-btn {
+    margin-top: 15px;
+    background: var(--success-green);
+    color: white;
+    border: 3px solid var(--gold-color);
+    padding: 12px 35px;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: none; /* only host sees */
+}
+.leave-room-btn {
+    margin-top: 12px;
+    background: #cc0000;
+    color: white;
+    border: 3px solid var(--gold-color);
+    padding: 10px 30px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 10px;
+    cursor: pointer;
+}
