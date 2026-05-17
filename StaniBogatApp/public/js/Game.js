@@ -1669,7 +1669,7 @@ function stopUserThemeMusic() {
 }
 
 // ============================================
-// MULTIPLAYER MODULE (Pure WebRTC + Worker signaling, with data channel ready checks)
+// MULTIPLAYER MODULE (Pure WebRTC + Worker signaling) – FIXED
 // ============================================
 const MAX_PLAYERS = 30;
 let mpPeerConnection = null;
@@ -1698,11 +1698,11 @@ roomScreen.innerHTML = `
         <button id="mpConfirmNameBtn" class="start-room-btn" style="display:inline-block;">Потвърди името</button>
         <p class="player-count" id="playerCountDisplay">Играчи: 0 / ${MAX_PLAYERS}</p>
         <div class="player-list" id="playerList"></div>
+        <p id="connectionStatus" style="color:#ccc; margin:10px 0; display:none;">Очакване на друг играч…</p>
         <div id="themeBrowserArea" style="display:none;">
             <p style="color:gold; margin-bottom:8px;">Избери тема:</p>
             <div class="theme-browser-inline" id="themeBrowserInline"></div>
         </div>
-        <p id="connectionStatus" style="color:#aaa; margin:10px 0; display:none;">Установяване на връзка…</p>
         <button id="startMpGameBtn" class="start-room-btn">Старт</button>
         <button id="leaveRoomBtn" class="leave-room-btn">Излез</button>
     </div>
@@ -1743,6 +1743,9 @@ async function joinMultiplayerRoom(code) {
 function resetUIForRole() {
     mpGameStarted = false;
     mpDataChannelOpen = false;
+    mpPeerConnection = null;
+    mpDataChannel = null;
+    mpSignallingSocket = null;
     startMpGameBtn.style.display = 'none';
     themeBrowserArea.style.display = 'none';
     mpConfirmNameBtn.style.display = 'inline-block';
@@ -1751,6 +1754,7 @@ function resetUIForRole() {
     mpPlayers = [];
     updatePlayerListUI();
     connectionStatus.style.display = 'none';
+    connectionStatus.textContent = 'Очакване на друг играч…';
 }
 
 // ---- Confirm name and connect ----
@@ -1814,7 +1818,7 @@ function populateThemeBrowser() {
         .catch(() => { /* ignore */ });
 }
 
-// ---- Signaling connection ----
+// ===== THE KEY FIX: Host waits for PEER_JOIN before creating offer =====
 function connectSignaling() {
     const wsUrl = 'wss://stanibogat-api.nataliya-atanasova.workers.dev/signal';
     mpSignallingSocket = new WebSocket(wsUrl);
@@ -1822,14 +1826,19 @@ function connectSignaling() {
     connectionStatus.style.display = 'block';
 
     mpSignallingSocket.onopen = () => {
-        connectionStatus.textContent = 'Изчакване на друг играч…';
+        connectionStatus.textContent = 'Очакване на друг играч…';
         mpSignallingSocket.send(JSON.stringify({ type: 'JOIN', room: mpRoomCode }));
+
+        // Both host and joiner create the peer connection now
+        createPeerConnection();
+
         if (isHost) {
-            createPeerConnection();
+            // Host: create data channel but DO NOT send offer yet
             mpDataChannel = mpPeerConnection.createDataChannel('game');
             setupDataChannel(mpDataChannel);
+            // Offer will be sent when PEER_JOIN arrives
         } else {
-            createPeerConnection();
+            // Joiner: wait for data channel from host
             mpPeerConnection.ondatachannel = (event) => {
                 mpDataChannel = event.channel;
                 setupDataChannel(mpDataChannel);
@@ -1840,26 +1849,36 @@ function connectSignaling() {
     mpSignallingSocket.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.type === 'PEER_JOIN') {
-            // Another peer just joined
-            connectionStatus.textContent = 'Връзката е установена. Изчакайте каналът за данни да се отвори…';
-        } else if (data.type === 'PEER_LEAVE') {
-            if (mpPeerConnection) mpPeerConnection.close();
-            connectionStatus.textContent = 'Другият играч напусна.';
-        } else if (data.sdp) {
-            mpPeerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-            if (!isHost && data.sdp.type === 'offer') {
-                mpPeerConnection.createAnswer().then(answer => {
-                    mpPeerConnection.setLocalDescription(answer);
-                    mpSignallingSocket.send(JSON.stringify({ sdp: answer }));
+            // Another peer just joined the signaling channel
+            connectionStatus.textContent = 'Установяване на P2P връзка…';
+            if (isHost) {
+                // NOW it's safe to create and send the offer
+                mpPeerConnection.createOffer().then(offer => {
+                    mpPeerConnection.setLocalDescription(offer);
+                    mpSignallingSocket.send(JSON.stringify({ type: 'SIGNAL', sdp: offer }));
                 });
             }
-        } else if (data.candidate) {
-            mpPeerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+        } else if (data.type === 'PEER_LEAVE') {
+            connectionStatus.textContent = 'Другият играч напусна.';
+            if (mpPeerConnection) mpPeerConnection.close();
+        } else if (data.type === 'SIGNAL') {
+            // Forwarded signaling message from the other peer
+            if (data.sdp) {
+                mpPeerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+                if (!isHost && data.sdp.type === 'offer') {
+                    mpPeerConnection.createAnswer().then(answer => {
+                        mpPeerConnection.setLocalDescription(answer);
+                        mpSignallingSocket.send(JSON.stringify({ type: 'SIGNAL', sdp: answer }));
+                    });
+                }
+            } else if (data.candidate) {
+                mpPeerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+            }
         }
     };
 
     mpSignallingSocket.onerror = () => {
-        connectionStatus.textContent = 'Грешка при свързване. Опитайте отново.';
+        connectionStatus.textContent = 'Грешка при свързване.';
     };
 
     mpSignallingSocket.onclose = () => {
@@ -1873,15 +1892,9 @@ function createPeerConnection() {
     });
     mpPeerConnection.onicecandidate = (event) => {
         if (event.candidate) {
-            mpSignallingSocket.send(JSON.stringify({ candidate: event.candidate }));
+            mpSignallingSocket.send(JSON.stringify({ type: 'SIGNAL', candidate: event.candidate }));
         }
     };
-    if (isHost) {
-        mpPeerConnection.createOffer().then(offer => {
-            mpPeerConnection.setLocalDescription(offer);
-            mpSignallingSocket.send(JSON.stringify({ sdp: offer }));
-        });
-    }
 }
 
 function setupDataChannel(channel) {
@@ -1890,7 +1903,7 @@ function setupDataChannel(channel) {
         connectionStatus.style.display = 'none';
         // Send our player info
         channel.send(JSON.stringify({ type: 'PLAYER_JOIN', name: mpPlayerName, id: isHost ? 'host' : 'joiner' }));
-        // If host, now show theme browser and start button
+        // If host, show theme browser
         if (isHost) {
             themeBrowserArea.style.display = 'block';
             populateThemeBrowser();
