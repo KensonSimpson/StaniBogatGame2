@@ -1669,7 +1669,7 @@ function stopUserThemeMusic() {
 }
 
 // ============================================
-// MULTIPLAYER MODULE (Pure WebRTC + Worker signaling) – DEBUG VERSION
+// MULTIPLAYER MODULE (Pure WebRTC + Durable Object signaling)
 // ============================================
 const MAX_PLAYERS = 30;
 let mpPeerConnection = null;
@@ -1685,7 +1685,7 @@ let mpScores = {};
 let mpPlayers = [];
 let mpAnswers = {};
 let mpDataChannelOpen = false;
-let mpJoinTimeout = null;   // fallback alert
+let mpJoinTimeout = null;
 
 // ---- Build the room screen ----
 const roomScreen = document.createElement('div');
@@ -1768,7 +1768,6 @@ mpConfirmNameBtn.addEventListener('click', () => {
     if (isHost) {
         mpPlayers = [{ id: 'host', name: mpPlayerName, emoji: '👑', isHost: true }];
         updatePlayerListUI();
-        // DEBUG: after 30 seconds, if no joiner arrived, show a message
         mpJoinTimeout = setTimeout(() => {
             if (!mpDataChannelOpen) {
                 alert('Никой не се присъедини. Може би кодът е грешен или Worker не работи.');
@@ -1826,9 +1825,9 @@ function populateThemeBrowser() {
         .catch(() => { /* ignore */ });
 }
 
-// ===== THE KEY FIX: Host waits for PEER_JOIN before creating offer =====
+// ===== Durable Object signaling =====
 function connectSignaling() {
-    const wsUrl = 'wss://stanibogat-api.nataliya-atanasova.workers.dev/signal';
+    const wsUrl = 'wss://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=' + mpRoomCode;
     console.log('🔗 Connecting to signaling:', wsUrl);
     mpSignallingSocket = new WebSocket(wsUrl);
     connectionStatus.textContent = 'Свързване…';
@@ -1837,8 +1836,7 @@ function connectSignaling() {
     mpSignallingSocket.onopen = () => {
         console.log('✅ Signaling socket open');
         connectionStatus.textContent = 'Очакване на друг играч…';
-        mpSignallingSocket.send(JSON.stringify({ type: 'JOIN', room: mpRoomCode }));
-
+        // No need to send a JOIN message; the DO knows the room from the URL
         createPeerConnection();
 
         if (isHost) {
