@@ -1669,7 +1669,7 @@ function stopUserThemeMusic() {
 }
 
 // ============================================
-// MULTIPLAYER MODULE (Pure WebRTC + Worker signaling) – FIXED
+// MULTIPLAYER MODULE (Pure WebRTC + Worker signaling) – DEBUG VERSION
 // ============================================
 const MAX_PLAYERS = 30;
 let mpPeerConnection = null;
@@ -1685,6 +1685,7 @@ let mpScores = {};
 let mpPlayers = [];
 let mpAnswers = {};
 let mpDataChannelOpen = false;
+let mpJoinTimeout = null;   // fallback alert
 
 // ---- Build the room screen ----
 const roomScreen = document.createElement('div');
@@ -1746,6 +1747,7 @@ function resetUIForRole() {
     mpPeerConnection = null;
     mpDataChannel = null;
     mpSignallingSocket = null;
+    if (mpJoinTimeout) clearTimeout(mpJoinTimeout);
     startMpGameBtn.style.display = 'none';
     themeBrowserArea.style.display = 'none';
     mpConfirmNameBtn.style.display = 'inline-block';
@@ -1766,6 +1768,12 @@ mpConfirmNameBtn.addEventListener('click', () => {
     if (isHost) {
         mpPlayers = [{ id: 'host', name: mpPlayerName, emoji: '👑', isHost: true }];
         updatePlayerListUI();
+        // DEBUG: after 30 seconds, if no joiner arrived, show a message
+        mpJoinTimeout = setTimeout(() => {
+            if (!mpDataChannelOpen) {
+                alert('Никой не се присъедини. Може би кодът е грешен или Worker не работи.');
+            }
+        }, 30000);
     }
     connectSignaling();
 });
@@ -1821,25 +1829,25 @@ function populateThemeBrowser() {
 // ===== THE KEY FIX: Host waits for PEER_JOIN before creating offer =====
 function connectSignaling() {
     const wsUrl = 'wss://stanibogat-api.nataliya-atanasova.workers.dev/signal';
+    console.log('🔗 Connecting to signaling:', wsUrl);
     mpSignallingSocket = new WebSocket(wsUrl);
     connectionStatus.textContent = 'Свързване…';
     connectionStatus.style.display = 'block';
 
     mpSignallingSocket.onopen = () => {
+        console.log('✅ Signaling socket open');
         connectionStatus.textContent = 'Очакване на друг играч…';
         mpSignallingSocket.send(JSON.stringify({ type: 'JOIN', room: mpRoomCode }));
 
-        // Both host and joiner create the peer connection now
         createPeerConnection();
 
         if (isHost) {
-            // Host: create data channel but DO NOT send offer yet
             mpDataChannel = mpPeerConnection.createDataChannel('game');
             setupDataChannel(mpDataChannel);
-            // Offer will be sent when PEER_JOIN arrives
+            console.log('📦 Host created data channel, waiting for PEER_JOIN');
         } else {
-            // Joiner: wait for data channel from host
             mpPeerConnection.ondatachannel = (event) => {
+                console.log('📦 Joiner received data channel');
                 mpDataChannel = event.channel;
                 setupDataChannel(mpDataChannel);
             };
@@ -1847,13 +1855,14 @@ function connectSignaling() {
     };
 
     mpSignallingSocket.onmessage = (event) => {
+        console.log('📩 SIGNALING RECEIVED:', event.data);
         const data = JSON.parse(event.data);
         if (data.type === 'PEER_JOIN') {
-            // Another peer just joined the signaling channel
             connectionStatus.textContent = 'Установяване на P2P връзка…';
+            console.log('👥 PEER_JOIN received, isHost:', isHost);
             if (isHost) {
-                // NOW it's safe to create and send the offer
                 mpPeerConnection.createOffer().then(offer => {
+                    console.log('📤 Sending offer');
                     mpPeerConnection.setLocalDescription(offer);
                     mpSignallingSocket.send(JSON.stringify({ type: 'SIGNAL', sdp: offer }));
                 });
@@ -1862,26 +1871,30 @@ function connectSignaling() {
             connectionStatus.textContent = 'Другият играч напусна.';
             if (mpPeerConnection) mpPeerConnection.close();
         } else if (data.type === 'SIGNAL') {
-            // Forwarded signaling message from the other peer
             if (data.sdp) {
+                console.log('🔄 Received SDP');
                 mpPeerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
                 if (!isHost && data.sdp.type === 'offer') {
                     mpPeerConnection.createAnswer().then(answer => {
+                        console.log('📤 Sending answer');
                         mpPeerConnection.setLocalDescription(answer);
                         mpSignallingSocket.send(JSON.stringify({ type: 'SIGNAL', sdp: answer }));
                     });
                 }
             } else if (data.candidate) {
+                console.log('🧊 Received ICE candidate');
                 mpPeerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
             }
         }
     };
 
-    mpSignallingSocket.onerror = () => {
+    mpSignallingSocket.onerror = (err) => {
+        console.error('❌ Signaling error:', err);
         connectionStatus.textContent = 'Грешка при свързване.';
     };
 
     mpSignallingSocket.onclose = () => {
+        console.log('🔌 Signaling socket closed');
         connectionStatus.textContent = 'Връзката прекъсна.';
     };
 }
@@ -1899,11 +1912,11 @@ function createPeerConnection() {
 
 function setupDataChannel(channel) {
     channel.onopen = () => {
+        console.log('🎉 Data channel OPEN');
         mpDataChannelOpen = true;
+        if (mpJoinTimeout) clearTimeout(mpJoinTimeout);
         connectionStatus.style.display = 'none';
-        // Send our player info
         channel.send(JSON.stringify({ type: 'PLAYER_JOIN', name: mpPlayerName, id: isHost ? 'host' : 'joiner' }));
-        // If host, show theme browser
         if (isHost) {
             themeBrowserArea.style.display = 'block';
             populateThemeBrowser();
@@ -1915,6 +1928,7 @@ function setupDataChannel(channel) {
         const msg = JSON.parse(event.data);
         switch (msg.type) {
             case 'PLAYER_JOIN':
+                console.log('👤 Player joined:', msg.name);
                 mpPlayers.push({ id: msg.id, name: msg.name, emoji: msg.id === 'host' ? '👑' : '🎮', isHost: msg.id === 'host' });
                 updatePlayerListUI();
                 break;
@@ -2049,6 +2063,7 @@ leaveRoomBtn.addEventListener('click', () => {
     mpAnswers = {};
     mpGameStarted = false;
     mpDataChannelOpen = false;
+    if (mpJoinTimeout) clearTimeout(mpJoinTimeout);
     roomScreen.style.display = 'none';
     document.getElementById('multiplayerMenuScreen').style.display = 'flex';
 });
