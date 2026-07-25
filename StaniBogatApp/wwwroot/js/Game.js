@@ -1310,7 +1310,57 @@ function resetGame() {
     removeDeathZoom();
     setTimeout(loadQuestion, 1000);
 }
+// ============================================
+// MULTIPLAYER DIAGNOSTIC HELPER
+// ============================================
+(function() {
+    // Wait for the page to load completely
+    window.addEventListener('load', function() {
+        console.log('🔍 Multiplayer Diagnostic Ready. Open the Console to see live messages.');
+        console.log('👉 Create a room as HOST and join from another device. Then watch below:');
+    });
 
+    // Override the original pollSignaling and sendSignal with instrumented versions
+    const origPoll = pollSignaling;
+    const origSend = sendSignal;
+
+    pollSignaling = async function() {
+        try {
+            const resp = await fetch(
+                `https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&since=${signalingSince}`
+            );
+            const messages = await resp.json();
+            // Print every polling cycle
+            if (messages.length > 0) {
+                console.log(`📨 POLL (${signalingClientId}):`, messages);
+            }
+            // Check for messages from the other client
+            for (const msg of messages) {
+                if (msg.client !== signalingClientId) {
+                    console.log('✅ FOUND OTHER CLIENT MESSAGE:', msg.client, msg.message);
+                }
+            }
+        } catch (e) {
+            console.error('❌ POLL ERROR:', e);
+        }
+        // Call original
+        return origPoll();
+    };
+
+    sendSignal = async function(data) {
+        console.log(`📤 SEND (${signalingClientId}):`, data);
+        try {
+            await fetch(
+                `https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&client=${signalingClientId}`,
+                { method: 'POST', body: JSON.stringify({ type: 'SIGNAL', ...data }), headers: { 'Content-Type': 'application/json' } }
+            );
+        } catch (e) {
+            console.error('❌ SEND ERROR:', e);
+        }
+        // Call original
+        return origSend(data);
+    };
+})();
 // ============================================
 // INITIALIZATION
 // ============================================
