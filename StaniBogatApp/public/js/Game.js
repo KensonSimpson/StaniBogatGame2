@@ -1669,7 +1669,7 @@ function stopUserThemeMusic() {
 }
 
 // ============================================
-// MULTIPLAYER MODULE (Pure WebRTC + D1 polling signaling)
+// MULTIPLAYER MODULE (D1 Polling) – final fixed
 // ============================================
 const MAX_PLAYERS = 30;
 let mpPeerConnection = null;
@@ -1684,12 +1684,11 @@ let mpScores = {};
 let mpPlayers = [];
 let mpAnswers = {};
 let mpDataChannelOpen = false;
-let mpJoinTimeout = null;
 let signalingClientId = '';
 let signalingSince = 0;
 let signalingPollInterval = null;
 
-// ---- Build the room screen ----
+// --- Room screen (with inline onclick) ---
 const roomScreen = document.createElement('div');
 roomScreen.id = 'mpRoomScreen';
 roomScreen.className = 'multiplayer-room-screen';
@@ -1697,8 +1696,8 @@ roomScreen.innerHTML = `
     <div class="room-content">
         <h2>Стая</h2>
         <p>Код: <span class="room-code" id="displayRoomCode">------</span></p>
-        <input type="text" id="mpNameInput" class="room-name-input" placeholder="Вашето име..." maxlength="20" />
-        <button id="mpConfirmNameBtn" class="start-room-btn" style="display:inline-block;">Потвърди името</button>
+        <input type="text" id="mpNameInput" class="room-name-input" placeholder="Вашето име..." maxlength="20" autocomplete="off" />
+        <button id="mpConfirmNameBtn" class="start-room-btn" style="display:inline-block;" onclick="confirmNameAndConnect()">Потвърди името</button>
         <p class="player-count" id="playerCountDisplay">Играчи: 0 / ${MAX_PLAYERS}</p>
         <div class="player-list" id="playerList"></div>
         <p id="connectionStatus" style="color:#ccc; margin:10px 0; display:none;">Очакване на друг играч…</p>
@@ -1714,7 +1713,6 @@ document.body.appendChild(roomScreen);
 
 const displayRoomCode = document.getElementById('displayRoomCode');
 const mpNameInput = document.getElementById('mpNameInput');
-const mpConfirmNameBtn = document.getElementById('mpConfirmNameBtn');
 const playerCountDisplay = document.getElementById('playerCountDisplay');
 const playerListEl = document.getElementById('playerList');
 const themeBrowserArea = document.getElementById('themeBrowserArea');
@@ -1723,7 +1721,7 @@ const startMpGameBtn = document.getElementById('startMpGameBtn');
 const leaveRoomBtn = document.getElementById('leaveRoomBtn');
 const connectionStatus = document.getElementById('connectionStatus');
 
-// ---- Create Room (Host) ----
+// ---- Create/Join ----
 async function createMultiplayerRoom() {
     mpRoomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     displayRoomCode.textContent = mpRoomCode;
@@ -1734,7 +1732,6 @@ async function createMultiplayerRoom() {
     roomScreen.style.display = 'flex';
 }
 
-// ---- Join Room ----
 async function joinMultiplayerRoom(code) {
     mpRoomCode = code.toUpperCase();
     displayRoomCode.textContent = mpRoomCode;
@@ -1748,14 +1745,13 @@ async function joinMultiplayerRoom(code) {
 function resetUIForRole() {
     mpGameStarted = false;
     mpDataChannelOpen = false;
+    if (mpPeerConnection) mpPeerConnection.close();
     mpPeerConnection = null;
     mpDataChannel = null;
-    if (mpJoinTimeout) clearTimeout(mpJoinTimeout);
     if (signalingPollInterval) clearInterval(signalingPollInterval);
-    signalingSince = Date.now();
+    signalingSince = 0;
     startMpGameBtn.style.display = 'none';
     themeBrowserArea.style.display = 'none';
-    mpConfirmNameBtn.style.display = 'inline-block';
     mpNameInput.style.display = 'inline-block';
     mpNameInput.value = '';
     mpPlayers = [];
@@ -1764,37 +1760,28 @@ function resetUIForRole() {
     connectionStatus.textContent = 'Очакване на друг играч…';
 }
 
-// ---- Confirm name and connect ----
-mpConfirmNameBtn.addEventListener('click', () => {
+// ---- Inline onclick function ----
+function confirmNameAndConnect() {
     mpPlayerName = mpNameInput.value.trim() || ('Player-' + Date.now().toString(36).substring(0,4));
     if (mpPlayerName.length > 20) mpPlayerName = mpPlayerName.substring(0, 20);
     mpNameInput.style.display = 'none';
-    mpConfirmNameBtn.style.display = 'none';
+    document.getElementById('mpConfirmNameBtn').style.display = 'none';
     if (isHost) {
         mpPlayers = [{ id: 'host', name: mpPlayerName, emoji: '👑', isHost: true }];
         updatePlayerListUI();
-        mpJoinTimeout = setTimeout(() => {
-            if (!mpDataChannelOpen) {
-                alert('Никой не се присъедини. Може би кодът е грешен или Worker не работи.');
-            }
-        }, 30000);
     }
     connectSignaling();
-});
+}
 
-// ---- Populate inline theme browser for the host ----
+// ---- Populate theme browser ----
 function populateThemeBrowser() {
     themeBrowserInline.innerHTML = '';
-    // Built-in themes
     for (const themeKey in QUESTIONS_DATA) {
         const chip = document.createElement('div');
         chip.className = 'theme-chip';
         chip.textContent = themeKey;
         chip.addEventListener('click', () => {
-            if (!mpDataChannelOpen) {
-                alert('Връзката още не е готова. Изчакайте.');
-                return;
-            }
+            if (!mpDataChannelOpen) { alert('Връзката още не е готова. Изчакайте.'); return; }
             let questions = QUESTIONS_DATA[themeKey]['bg'] || QUESTIONS_DATA[themeKey][Object.keys(QUESTIONS_DATA[themeKey])[0]];
             if (questions) {
                 document.querySelectorAll('.theme-chip').forEach(c => c.style.borderColor = '');
@@ -1804,7 +1791,6 @@ function populateThemeBrowser() {
         });
         themeBrowserInline.appendChild(chip);
     }
-    // User themes (fetched)
     fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/themes')
         .then(r => r.json())
         .then(themes => {
@@ -1813,10 +1799,7 @@ function populateThemeBrowser() {
                 chip.className = 'theme-chip';
                 chip.textContent = theme.name + ' (ID:' + theme.id + ')';
                 chip.addEventListener('click', () => {
-                    if (!mpDataChannelOpen) {
-                        alert('Връзката още не е готова. Изчакайте.');
-                        return;
-                    }
+                    if (!mpDataChannelOpen) { alert('Връзката още не е готова. Изчакайте.'); return; }
                     const questions = JSON.parse(theme.questionsData);
                     if (questions) {
                         document.querySelectorAll('.theme-chip').forEach(c => c.style.borderColor = '');
@@ -1826,59 +1809,88 @@ function populateThemeBrowser() {
                 });
                 themeBrowserInline.appendChild(chip);
             });
-        })
-        .catch(() => { /* ignore */ });
+        }).catch(() => {});
 }
 
-// ===== D1-based polling signaling =====
 function connectSignaling() {
-    // Start polling for signaling messages
+    if (!isHost) alert('Joiner connectSignaling is running – check console');
     signalingPollInterval = setInterval(pollSignaling, 500);
     createPeerConnection();
-
     if (isHost) {
         mpDataChannel = mpPeerConnection.createDataChannel('game');
         setupDataChannel(mpDataChannel);
+        console.log('📦 Host created data channel');
     } else {
         mpPeerConnection.ondatachannel = (event) => {
             mpDataChannel = event.channel;
             setupDataChannel(mpDataChannel);
+            console.log('📦 Joiner received data channel');
         };
+    }
+
+    if (isHost) signalingSince = 0;
+
+    if (!isHost) {
+        fetch(`https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&client=${signalingClientId}`, {
+            method: 'POST',
+            body: JSON.stringify({ type: 'JOIN' }),
+            headers: { 'Content-Type': 'application/json' }
+        });
+        console.log('📤 Joiner posted JOIN');
     }
 }
 
 async function pollSignaling() {
     try {
-        const resp = await fetch(
-            `https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&since=${signalingSince}`
-        );
+        const url = `https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&since=${signalingSince}`;
+        const resp = await fetch(url);
         const messages = await resp.json();
+
+        if (messages.length > 0) console.log(`📨 POLL (${signalingClientId}):`, messages);
+
         for (const msg of messages) {
             if (msg.client !== signalingClientId) {
+                console.log('✅ OTHER CLIENT MESSAGE:', msg.client, msg.message);
                 const data = JSON.parse(msg.message);
-                if (data.type === 'SIGNAL') {
+                if (data.type === 'JOIN') {
+                    console.log('👋 JOIN received, creating offer');
+                    mpPeerConnection.createOffer().then(offer => {
+                        mpPeerConnection.setLocalDescription(offer);
+                        sendSignal({ sdp: offer });
+                    });
+                } else if (data.type === 'SIGNAL') {
                     if (data.sdp) {
+                        console.log('🔄 Applying SDP');
                         await mpPeerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
                         if (!isHost && data.sdp.type === 'offer') {
                             const answer = await mpPeerConnection.createAnswer();
                             await mpPeerConnection.setLocalDescription(answer);
                             await sendSignal({ sdp: answer });
+                            console.log('📤 Sent answer');
                         }
                     } else if (data.candidate) {
+                        console.log('🧊 Adding ICE candidate');
                         await mpPeerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
                     }
                 }
+                signalingSince = Math.max(signalingSince, msg.timestamp);
             }
-            signalingSince = Math.max(signalingSince, msg.timestamp);
         }
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+        console.error('❌ POLL ERROR:', e);
+    }
 }
 
 async function sendSignal(data) {
-    await fetch(
-        `https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&client=${signalingClientId}`,
-        { method: 'POST', body: JSON.stringify({ type: 'SIGNAL', ...data }), headers: { 'Content-Type': 'application/json' } }
-    );
+    console.log(`📤 SEND (${signalingClientId}):`, data);
+    try {
+        await fetch(
+            `https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&client=${signalingClientId}`,
+            { method: 'POST', body: JSON.stringify({ type: 'SIGNAL', ...data }), headers: { 'Content-Type': 'application/json' } }
+        );
+    } catch (e) {
+        console.error('❌ SEND ERROR:', e);
+    }
 }
 
 function createPeerConnection() {
@@ -1891,13 +1903,13 @@ function createPeerConnection() {
 function setupDataChannel(channel) {
     channel.onopen = () => {
         mpDataChannelOpen = true;
-        if (mpJoinTimeout) clearTimeout(mpJoinTimeout);
         connectionStatus.style.display = 'none';
         channel.send(JSON.stringify({ type: 'PLAYER_JOIN', name: mpPlayerName, id: isHost ? 'host' : 'joiner' }));
         if (isHost) {
             themeBrowserArea.style.display = 'block';
             populateThemeBrowser();
             startMpGameBtn.style.display = 'inline-block';
+            console.log('🎉 Host ready – theme browser shown');
         }
     };
     channel.onmessage = (event) => {
@@ -1926,13 +1938,10 @@ function updatePlayerListUI() {
     playerCountDisplay.textContent = `Играчи: ${mpPlayers.length} / ${MAX_PLAYERS}`;
 }
 
-// ---- Host starts the game ----
+// ---- Game logic ----
 function startMpGame(questions) {
     if (!isHost || mpGameStarted) return;
-    if (!mpDataChannelOpen) {
-        alert('Каналът за данни не е отворен все още.');
-        return;
-    }
+    if (!mpDataChannelOpen) { alert('Каналът за данни не е отворен все още.'); return; }
     mpGameStarted = true;
     mpQuestions = questions;
     mpCurrentQuestion = 0;
@@ -1953,10 +1962,7 @@ function sendNextMpQuestion() {
     const q = mpQuestions[mpCurrentQuestion];
     mpDataChannel.send(JSON.stringify({ type: 'QUESTION', question: q.question, answers: q.answers, timeLimit: 15 }));
     mpAnswers = {};
-    setTimeout(() => {
-        mpCurrentQuestion++;
-        sendNextMpQuestion();
-    }, 15000);
+    setTimeout(() => { mpCurrentQuestion++; sendNextMpQuestion(); }, 15000);
 }
 
 function displayMpQuestion(data) {
@@ -1978,9 +1984,7 @@ function displayMpQuestion(data) {
 function handleMpAnswer(playerId, answerIndex) {
     if (!isHost) return;
     mpAnswers[playerId] = answerIndex;
-    if (Object.keys(mpAnswers).length === mpPlayers.length) {
-        finishMpQuestion();
-    }
+    if (Object.keys(mpAnswers).length === mpPlayers.length) finishMpQuestion();
 }
 
 function finishMpQuestion() {
@@ -2028,15 +2032,16 @@ leaveRoomBtn.addEventListener('click', () => {
     mpAnswers = {};
     mpGameStarted = false;
     mpDataChannelOpen = false;
-    if (mpJoinTimeout) clearTimeout(mpJoinTimeout);
     roomScreen.style.display = 'none';
     document.getElementById('multiplayerMenuScreen').style.display = 'flex';
 });
+
 // ============================================
 // INITIALIZATION
 // ============================================
 document.addEventListener('DOMContentLoaded', function () {
     console.log("=== GAME INITIALIZATION STARTED ===");
+
     const startBtn = document.getElementById('startButton');
     const tutorialBtn = document.getElementById('tutorialButton');
     const wheelBtn = document.getElementById('spinningWheelButton');
