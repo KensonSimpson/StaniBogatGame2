@@ -1814,7 +1814,6 @@ function populateThemeBrowser() {
         }).catch(() => {});
 }
 
-// ===== D1 Polling (with debug) =====
 function connectSignaling() {
     signalingPollInterval = setInterval(pollSignaling, 500);
     createPeerConnection();
@@ -1828,6 +1827,15 @@ function connectSignaling() {
             setupDataChannel(mpDataChannel);
             console.log('📦 Joiner received data channel');
         };
+    }
+
+    // Joiner sends a JOIN announcement so the host knows to start the offer
+    if (!isHost) {
+        fetch(`https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&client=${signalingClientId}`, {
+            method: 'POST',
+            body: JSON.stringify({ type: 'JOIN' }),
+            headers: { 'Content-Type': 'application/json' }
+        });
     }
 }
 
@@ -1843,6 +1851,15 @@ async function pollSignaling() {
             if (msg.client !== signalingClientId) {
                 console.log('✅ OTHER CLIENT MESSAGE:', msg.client, msg.message);
                 const data = JSON.parse(msg.message);
+                // NEW: handle explicit JOIN message
+                if (data.type === 'JOIN') {
+                    console.log('👋 JOIN received, creating offer');
+                    mpPeerConnection.createOffer().then(offer => {
+                        mpPeerConnection.setLocalDescription(offer);
+                        sendSignal({ sdp: offer });
+                    });
+                    continue;
+                }
                 if (data.type === 'SIGNAL') {
                     if (data.sdp) {
                         console.log('🔄 Applying SDP');
