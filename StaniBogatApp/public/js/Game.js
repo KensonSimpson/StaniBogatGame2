@@ -1669,7 +1669,7 @@ function stopUserThemeMusic() {
 }
 
 // ============================================
-// MULTIPLAYER MODULE (final, polished)
+// MULTIPLAYER MODULE (robust join detection)
 // ============================================
 const MAX_PLAYERS = 30;
 let mpPeerConnection = null;
@@ -1826,22 +1826,37 @@ startMpGameBtn.addEventListener('click', () => {
     beginMpGame(selectedQuestions);
 });
 
+// ============================================
+// RELIABLE SIGNALING
+// ============================================
 function connectSignaling() {
+    if (!isHost) {
+        alert('Joiner connectSignaling is running – check console');
+    }
     signalingPollInterval = setInterval(pollSignaling, 500);
     createPeerConnection();
+
     if (isHost) {
         mpDataChannel = mpPeerConnection.createDataChannel('game');
         setupDataChannel(mpDataChannel);
         console.log('📦 Host created data channel');
+        // Aggressive polling in the first few seconds
         signalingSince = 0;
         pollSignaling();
+        // Additional polls at 1s, 2s, 3s to catch late JOINs
+        setTimeout(() => { if (!mpDataChannelOpen) pollSignaling(); }, 1000);
+        setTimeout(() => { if (!mpDataChannelOpen) pollSignaling(); }, 2000);
+        setTimeout(() => { if (!mpDataChannelOpen) pollSignaling(); }, 3000);
     } else {
         mpPeerConnection.ondatachannel = (event) => {
             mpDataChannel = event.channel;
             setupDataChannel(mpDataChannel);
             console.log('📦 Joiner received data channel');
         };
-        fetch(`https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&client=${signalingClientId}`, {
+        // Joiner sends JOIN message
+        const url = `https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&client=${signalingClientId}`;
+        console.log('📤 Joiner sending JOIN to:', url);
+        fetch(url, {
             method: 'POST',
             body: JSON.stringify({ type: 'JOIN' }),
             headers: { 'Content-Type': 'application/json' }
