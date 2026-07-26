@@ -1,5 +1,49 @@
 // ============================================
-// GAME CONFIGURATION
+// THEME CATEGORIES
+// ============================================
+const THEME_CATEGORIES = {
+    "Minecraft": "games",
+    "Super Mario": "games",
+    "Geometry Dash": "games",
+    "Baldi's Basics": "games",
+    "Шах": "boardgames",
+    "Математика": "education",
+    "БЕЛ": "education",
+    "Руски език": "education",
+    "Databases": "it",
+    "Стани Богат": "education",
+    "Общи знания": "general",
+    "Movies": "general",
+    "Holidays": "holidays",
+    "Спорт": "sports",
+    "Листовки": "special"
+};
+
+const CATEGORY_NAMES = {
+    "games": "Игри",
+    "education": "Образование",
+    "general": "Общи",
+    "sports": "Спорт",
+    "special": "Специални",
+    "boardgames": "Настолни игри",
+    "it": "ИТ",
+    "holidays": "Празници"
+};
+
+// ============================================
+// THEME CONFIG (overrides per theme)
+// ============================================
+const THEME_CONFIG = {
+    "Листовки": {
+        totalQuestions: 45,
+        showPrizes: false,
+        milestones: [9, 19, 29, 39],
+        moneyTreeLabel: (index) => (index + 1) + "."
+    }
+};
+
+// ============================================
+// GAME CONFIGURATION (base)
 // ============================================
 const GAME_CONFIG = {
     totalQuestions: 15,
@@ -30,6 +74,7 @@ let gameState = {
     isSpinning: false,
     isMoneyTreeVisible: false,
     answerRevealTimeout: null,
+    wrongAnswerTimeout: null,
     tickInterval: null,
     currentTickSound: 1
 };
@@ -44,9 +89,10 @@ let settings = {
 let currentLanguage = 'bg';
 let currentTheme = null;
 let currentThemeQuestions = null;
+let currentTotalQuestions = 15;
 
 // ============================================
-// BACKGROUND WRAPPER (ONLY ONE BACKGROUND)
+// BACKGROUND WRAPPER
 // ============================================
 const bgWrapper = document.getElementById('backgroundWrapper');
 const DEFAULT_BACKGROUND = '/images/StaniBogatBackground.jpg';
@@ -65,7 +111,6 @@ function setThemeBackground(themeKey) {
         }
     }
     bgWrapper.style.backgroundImage = `url('${bgImage}')`;
-    // Remove any inline background from body
     document.body.style.backgroundImage = 'none';
 }
 
@@ -99,14 +144,12 @@ function playThemeMusic(themeKey) {
             music.loop = true;
             music.play().catch(e => console.log("Theme music play failed:", e));
             currentThemeMusic = music;
-        } else {
-            console.error("minecraftMusic element not found!");
         }
     }
 }
 
 // ============================================
-// MINECRAFT CLICK SOUND (global)
+// MINECRAFT CLICK SOUND
 // ============================================
 function playMinecraftClick() {
     if (currentTheme !== 'Minecraft') return;
@@ -141,7 +184,7 @@ function removeMinecraftClickSound() {
 }
 
 // ============================================
-// MINECRAFT THEME (logo, container, click sound)
+// MINECRAFT THEME
 // ============================================
 function applyMinecraftTheme() {
     const gameContainer = document.getElementById('gameContainer');
@@ -189,7 +232,7 @@ function removeMinecraftTheme() {
 }
 
 // ============================================
-// MINECRAFT DEATH SCREEN (ZOOM & ROTATE)
+// MINECRAFT DEATH SCREEN
 // ============================================
 function applyDeathZoom() {
     const gameContainer = document.getElementById('gameContainer');
@@ -197,7 +240,7 @@ function applyDeathZoom() {
     if (gameContainer) gameContainer.classList.add('death-zoom');
     if (bgWrapper) {
         bgWrapper.classList.add('death-zoom');
-        void bgWrapper.offsetWidth; // force reflow
+        void bgWrapper.offsetWidth;
     }
 }
 
@@ -212,7 +255,6 @@ function showMinecraftDeathScreen() {
     const deathScreen = document.getElementById('minecraftDeathScreen');
     if (!deathScreen) return;
     
-    // Play damage sound
     const damageSound = document.getElementById('minecraftDamageSound');
     if (damageSound) {
         damageSound.currentTime = 0;
@@ -231,6 +273,7 @@ function showMinecraftDeathScreen() {
             gameState.currentQuestion = 0;
             gameState.usedJokers = { fiftyFifty: false, audience: false, phone: false };
             document.querySelectorAll('.joker-btn').forEach(b => { b.disabled = false; b.classList.remove('used'); });
+            cancelAllTimers();
             loadQuestion();
         };
     }
@@ -246,42 +289,14 @@ function showMinecraftDeathScreen() {
 }
 
 // ============================================
-// INTRO VIDEO (optional)
+// CANCEL ALL TIMERS
 // ============================================
-function playIntroVideo() {
-    const videoContainer = document.getElementById('introVideo');
-    const videoPlayer = document.getElementById('introVideoPlayer');
-    const skipButton = document.getElementById('skipIntro');
-    if (!videoContainer || !videoPlayer) {
-        console.log("Video elements not found, skipping intro");
-        return;
-    }
-    console.log("Playing intro video...");
-    videoContainer.style.display = 'flex';
-    if (skipButton) {
-        skipButton.addEventListener('click', function () {
-            console.log("Video skipped");
-            videoContainer.style.display = 'none';
-            videoPlayer.pause();
-        });
-    }
-    videoPlayer.addEventListener('ended', function () {
-        console.log("Video ended");
-        videoContainer.style.display = 'none';
-    });
-    videoPlayer.play().catch(error => {
-        console.log("Video autoplay prevented:", error);
-        if (skipButton) {
-            skipButton.textContent = "► Пусни видеото";
-            skipButton.style.background = "rgba(255, 215, 0, 0.8)";
-        }
-    });
-    videoContainer.addEventListener('click', function (event) {
-        if (event.target === videoContainer || event.target === videoPlayer) {
-            videoContainer.style.display = 'none';
-            videoPlayer.pause();
-        }
-    });
+function cancelAllTimers() {
+    clearTimeout(gameState.answerRevealTimeout);
+    clearTimeout(gameState.wrongAnswerTimeout);
+    gameState.isRevealingAnswers = false;
+    const skip = document.getElementById('skipHint');
+    if (skip) skip.style.display = 'none';
 }
 
 // ============================================
@@ -314,9 +329,10 @@ function playSound(soundId) {
 
 function updateMoneyTree() {
     const moneyItems = document.querySelectorAll('.money-item');
+    const total = currentTotalQuestions;
     moneyItems.forEach((item, index) => {
         item.classList.remove('current', 'won');
-        const questionNumber = 15 - index;
+        const questionNumber = total - index;
         if (questionNumber === gameState.currentQuestion + 1) {
             item.classList.add('current');
         } else if (questionNumber < gameState.currentQuestion + 1) {
@@ -336,7 +352,34 @@ function updateGameContainerResponsiveness() {
 }
 
 // ============================================
-// LANGUAGE SYSTEM (with theme support)
+// DYNAMIC MONEY TREE GENERATION
+// ============================================
+function generateMoneyTree(themeKey) {
+    const tree = document.getElementById('moneyTree');
+    if (!tree) return;
+    const config = THEME_CONFIG[themeKey] || {};
+    const total = config.totalQuestions || GAME_CONFIG.totalQuestions;
+    let html = '<div class="jokers">' +
+        '<button class="joker-btn" id="joker5050" onclick="useFiftyFifty()"><span class="joker-text">50:50</span></button>' +
+        '<button class="joker-btn" id="jokerAudience" onclick="useAudience()"><span class="joker-text">👥 Публика</span></button>' +
+        '<button class="joker-btn" id="jokerPhone" onclick="usePhone()"><span class="joker-text">📞 Телефон</span></button>' +
+        '</div>';
+    for (let i = total; i >= 1; i--) {
+        let text;
+        if (config.showPrizes !== false) {
+            const t = TRANSLATIONS[currentLanguage];
+            const prize = t?.prizes?.[i-1] || `${i}00 BGN`;
+            text = `${i}. ${prize}`;
+        } else {
+            text = config.moneyTreeLabel ? config.moneyTreeLabel(i-1) : `${i}.`;
+        }
+        html += `<div class="money-item">${text}</div>`;
+    }
+    tree.innerHTML = html;
+}
+
+// ============================================
+// LANGUAGE SYSTEM
 // ============================================
 function initLanguageSystem() {
     const savedLang = localStorage.getItem('staniBogatLanguage');
@@ -354,7 +397,6 @@ function initLanguageSystem() {
 
 function changeLanguage(lang) {
     if (!LANGUAGE_CONFIG.available.includes(lang)) return;
-    console.log("Changing language to:", lang);
     document.querySelectorAll('.language-btn').forEach(btn => {
         btn.classList.remove('active');
         if (btn.getAttribute('data-lang') === lang) {
@@ -416,7 +458,7 @@ function loadThemeQuestions(themeKey) {
 }
 
 // ============================================
-// SETTINGS (full original)
+// SETTINGS
 // ============================================
 function initializeSettings() {
     const settingsButton = document.getElementById('settingsButton');
@@ -545,7 +587,7 @@ function resetToDefaultSettings() {
 }
 
 // ============================================
-// MONEY TREE
+// MONEY TREE TOGGLE
 // ============================================
 function initializeMoneyTreeToggle() {
     const toggle = document.getElementById('moneyTreeToggle');
@@ -582,7 +624,7 @@ function initializeMoneyTreeToggle() {
 }
 
 // ============================================
-// START MENU & THEME SELECTION (UPDATED)
+// START MENU & CATEGORY / THEME SELECTION
 // ============================================
 function initializeStartMenu() {
     const startButton = document.getElementById('startButton');
@@ -599,92 +641,125 @@ function initializeStartMenu() {
     const moneyTree = document.getElementById('moneyTree');
     const levelIndicator = document.querySelector('.level-indicator');
     const backButtonContainer = document.querySelector('.game-back-button-container');
+    const categoryScreen = document.getElementById('categorySelectionScreen');
+    const backFromCategory = document.getElementById('backFromCategoryButton');
+    const categoryButtonsContainer = document.querySelector('.category-buttons-container');
     const themeScreen = document.getElementById('themeSelectionScreen');
     const backFromTheme = document.getElementById('backFromThemeButton');
     const themeButtonsContainer = document.querySelector('.theme-buttons-container');
+    const saveCloudBtn = document.getElementById('saveCloudBtn');
 
-    // Populate theme buttons
-    if (themeButtonsContainer && typeof QUESTIONS_DATA !== 'undefined') {
-        themeButtonsContainer.innerHTML = '';
-        for (const themeKey in QUESTIONS_DATA) {
-            const button = document.createElement('button');
-            button.className = 'theme-btn';
-            button.setAttribute('data-theme', themeKey);
-            button.textContent = themeKey;
-            themeButtonsContainer.appendChild(button);
+    if (categoryButtonsContainer && Object.keys(CATEGORY_NAMES).length > 0) {
+        categoryButtonsContainer.innerHTML = '';
+        for (const [catKey, catName] of Object.entries(CATEGORY_NAMES)) {
+            const btn = document.createElement('button');
+            btn.className = 'category-btn';
+            btn.setAttribute('data-category', catKey);
+            btn.textContent = catName;
+            categoryButtonsContainer.appendChild(btn);
         }
-    } else {
-        console.error("QUESTIONS_DATA not loaded or theme container missing");
     }
 
-    // Start button -> show theme selection
     if (startButton) {
         startButton.addEventListener('click', () => {
-            console.log("Start button clicked!");
             performTransition(() => {
                 startMenu.style.display = 'none';
-                themeScreen.style.display = 'flex';
+                categoryScreen.style.display = 'flex';
             });
         });
     } else {
         console.error("CRITICAL: Start button not found!");
     }
 
-    // Theme button handlers
-    document.querySelectorAll('.theme-btn').forEach(btn => {
+    document.querySelectorAll('.category-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            const themeKey = btn.getAttribute('data-theme');
-            if (!loadThemeQuestions(themeKey)) {
-                alert("Темата няма въпроси. Опитайте друга.");
-                return;
-            }
-            gameState.currentQuestion = 0;
-            gameState.usedJokers = { fiftyFifty: false, audience: false, phone: false };
-            document.querySelectorAll('.joker-btn').forEach(b => { b.disabled = false; b.classList.remove('used'); });
+            const catKey = btn.getAttribute('data-category');
             performTransition(() => {
-                themeScreen.style.display = 'none';
-                gameContainer.style.display = 'block';
-                gameContainer.style.opacity = '1';
-                if (moneyTree) moneyTree.style.display = 'block';
-                if (levelIndicator) levelIndicator.style.display = 'block';
-                if (backButtonContainer) backButtonContainer.style.display = 'block';
-                if (gameBack) gameBack.style.display = 'block';
-                if (moneyTreeToggle) { moneyTreeToggle.style.display = 'block'; moneyTreeToggle.style.opacity = '1'; }
-                if (moneyTree) { moneyTree.classList.remove('visible'); moneyTree.style.opacity = '1'; }
-                gameContainer.classList.remove('narrow');
-                moneyTreeToggle.innerHTML = '💰';
-                gameState.isMoneyTreeVisible = false;
-                setTimeout(() => updateGameContainerResponsiveness(), 100);
-                stopRetroMusic();
-                setThemeBackground(themeKey);
-                playThemeMusic(themeKey);
-                if (themeKey === 'Minecraft') {
-                    applyMinecraftTheme();
-                } else {
-                    removeMinecraftTheme();
+                categoryScreen.style.display = 'none';
+                themeScreen.style.display = 'flex';
+                if (themeButtonsContainer) {
+                    themeButtonsContainer.innerHTML = '';
+                    for (const themeKey in QUESTIONS_DATA) {
+                        if (THEME_CATEGORIES[themeKey] === catKey) {
+                            const tBtn = document.createElement('button');
+                            tBtn.className = 'theme-btn';
+                            tBtn.setAttribute('data-theme', themeKey);
+                            tBtn.textContent = themeKey;
+                            themeButtonsContainer.appendChild(tBtn);
+                            tBtn.addEventListener('click', () => {
+                                startGameWithTheme(themeKey);
+                            });
+                        }
+                    }
                 }
-            }, () => {
-                loadQuestion();
             });
         });
     });
 
-    // Back from theme screen
-    if (backFromTheme) {
-        backFromTheme.addEventListener('click', () => {
+    if (backFromCategory) {
+        backFromCategory.addEventListener('click', () => {
             performTransition(() => {
-                themeScreen.style.display = 'none';
+                categoryScreen.style.display = 'none';
                 startMenu.style.display = 'flex';
-                resetToDefaultBackground();
-                stopThemeMusic();
             });
         });
     }
 
-    // Game Back Button
+    if (backFromTheme) {
+        backFromTheme.addEventListener('click', () => {
+            performTransition(() => {
+                themeScreen.style.display = 'none';
+                categoryScreen.style.display = 'flex';
+            });
+        });
+    }
+
+    function startGameWithTheme(themeKey) {
+        if (!loadThemeQuestions(themeKey)) {
+            alert("Темата няма въпроси. Опитайте друга.");
+            return;
+        }
+        const config = THEME_CONFIG[themeKey] || {};
+        currentTotalQuestions = config.totalQuestions || GAME_CONFIG.totalQuestions;
+        gameState.currentQuestion = 0;
+        gameState.usedJokers = { fiftyFifty: false, audience: false, phone: false };
+        document.querySelectorAll('.joker-btn').forEach(b => { b.disabled = false; b.classList.remove('used'); });
+        cancelAllTimers();
+
+        performTransition(() => {
+            themeScreen.style.display = 'none';
+            gameContainer.style.display = 'block';
+            gameContainer.style.opacity = '1';
+            if (moneyTree) { moneyTree.style.display = 'block'; generateMoneyTree(themeKey); }
+            if (levelIndicator) levelIndicator.style.display = 'block';
+            if (backButtonContainer) backButtonContainer.style.display = 'block';
+            if (gameBack) gameBack.style.display = 'block';
+            if (moneyTreeToggle) { moneyTreeToggle.style.display = 'block'; moneyTreeToggle.style.opacity = '1'; }
+            if (moneyTree) { moneyTree.classList.remove('visible'); moneyTree.style.opacity = '1'; }
+            gameContainer.classList.remove('narrow');
+            moneyTreeToggle.innerHTML = '💰';
+            gameState.isMoneyTreeVisible = false;
+            if (saveCloudBtn) saveCloudBtn.style.display = 'inline-block';
+            setTimeout(() => updateGameContainerResponsiveness(), 100);
+            stopRetroMusic();
+            setThemeBackground(themeKey);
+            playThemeMusic(themeKey);
+            if (themeKey === 'Minecraft') {
+                applyMinecraftTheme();
+            } else {
+                removeMinecraftTheme();
+            }
+            const answersContainer = document.getElementById('answersContainer');
+            if (answersContainer) answersContainer.innerHTML = '';
+        }, () => {
+            loadQuestion();
+        });
+    }
+
     if (gameBack) {
         gameBack.addEventListener('click', () => {
-            console.log("Game back button clicked");
+            cancelAllTimers();
+            stopUserThemeMusic();
             performTransition(() => {
                 gameContainer.style.display = 'none';
                 if (moneyTree) moneyTree.style.display = 'none';
@@ -692,7 +767,8 @@ function initializeStartMenu() {
                 if (backButtonContainer) backButtonContainer.style.display = 'none';
                 gameBack.style.display = 'none';
                 if (moneyTreeToggle) moneyTreeToggle.style.display = 'none';
-                startMenu.style.display = 'flex';
+                if (saveCloudBtn) saveCloudBtn.style.display = 'none';
+                categoryScreen.style.display = 'flex';
                 gameState.currentQuestion = 0;
                 gameState.usedJokers = { fiftyFifty: false, audience: false, phone: false };
                 document.querySelectorAll('.joker-btn').forEach(b => { b.disabled = false; b.classList.remove('used'); });
@@ -702,11 +778,12 @@ function initializeStartMenu() {
                 stopThemeMusic();
                 removeMinecraftTheme();
                 removeDeathZoom();
+                const answersContainer = document.getElementById('answersContainer');
+                if (answersContainer) answersContainer.innerHTML = '';
             });
         });
     }
 
-    // Tutorial button
     if (tutorialButton) {
         tutorialButton.addEventListener('click', () => {
             performTransition(() => {
@@ -715,11 +792,7 @@ function initializeStartMenu() {
                 stopRetroMusic();
             });
         });
-    } else {
-        console.error("Tutorial button not found!");
     }
-
-    // Spinning Wheel button
     if (spinningWheelButton) {
         spinningWheelButton.addEventListener('click', () => {
             performTransition(() => {
@@ -728,11 +801,7 @@ function initializeStartMenu() {
                 playRetroMusic();
             });
         });
-    } else {
-        console.error("Spinning Wheel button not found!");
     }
-
-    // Back button from tutorial
     if (backButton) {
         backButton.addEventListener('click', () => {
             performTransition(() => {
@@ -741,8 +810,6 @@ function initializeStartMenu() {
             });
         });
     }
-
-    // Back button from spinning wheel
     if (backFromWheel) {
         backFromWheel.addEventListener('click', () => {
             performTransition(() => {
@@ -756,7 +823,7 @@ function initializeStartMenu() {
 }
 
 // ============================================
-// SPINNING WHEEL (with custom support)
+// SPINNING WHEEL
 // ============================================
 let customWheelConfig = null;
 
@@ -1028,11 +1095,17 @@ function resetSpinningWheel() {
 }
 
 // ============================================
-// GAME QUESTIONS (theme‑aware)
+// GAME QUESTIONS
 // ============================================
 function loadQuestion() {
-    let qArray = currentThemeQuestions ? currentThemeQuestions : (TRANSLATIONS[currentLanguage]?.questions);
+    let qArray = currentThemeQuestions;
     if (!qArray) { console.error("No questions available"); return; }
+    if (gameState.currentQuestion >= currentTotalQuestions) {
+        alert('Честито, завършихте всички въпроси!');
+        gameState.currentQuestion = 0;
+        resetGame();
+        return;
+    }
     const q = qArray[gameState.currentQuestion];
     if (!q) { console.error("No question at index", gameState.currentQuestion); return; }
     document.getElementById('questionText').textContent = q.question;
@@ -1053,9 +1126,10 @@ function loadQuestion() {
         answersContainer.appendChild(btn);
     });
     gameState.isRevealingAnswers = false;
-    if (gameState.answerRevealTimeout) clearTimeout(gameState.answerRevealTimeout);
+    cancelAllTimers();
     startAnswerReveal();
 }
+
 function startAnswerReveal() {
     gameState.isRevealingAnswers = true;
     const btns = document.querySelectorAll('.answer-btn');
@@ -1077,6 +1151,7 @@ function startAnswerReveal() {
     }
     gameState.answerRevealTimeout = setTimeout(reveal, GAME_CONFIG.answerRevealDelay);
 }
+
 function skipAnswerReveal() {
     if (!gameState.isRevealingAnswers) return;
     if (gameState.answerRevealTimeout) clearTimeout(gameState.answerRevealTimeout);
@@ -1093,6 +1168,7 @@ function skipAnswerReveal() {
     gameState.isRevealingAnswers = false;
     if (skip) skip.style.display = 'none';
 }
+
 function reloadQuestionForLanguage() {
     if (currentThemeQuestions) loadThemeQuestions(currentTheme);
     const qArray = currentThemeQuestions || TRANSLATIONS[currentLanguage].questions;
@@ -1107,22 +1183,31 @@ function reloadQuestionForLanguage() {
         updateLevelIndicator();
     }
 }
+
 function updateLevelIndicator() {
     const levelEl = document.getElementById('currentLevel');
     const prizeEl = document.getElementById('currentPrize');
     const t = TRANSLATIONS[currentLanguage];
-    if (levelEl && prizeEl && t && t.prizes) {
-        const prize = t.prizes[gameState.currentQuestion] || TRANSLATIONS.bg.prizes[gameState.currentQuestion] || `${(gameState.currentQuestion + 1) * 100} BGN`;
-        prizeEl.textContent = prize;
-        const indicator = document.querySelector('.level-indicator');
-        if (indicator && t.levelIndicator) {
-            indicator.innerHTML = t.levelIndicator.replace('{level}', gameState.currentQuestion + 1).replace('{prize}', prize);
+    const config = THEME_CONFIG[currentTheme] || {};
+    if (levelEl) levelEl.textContent = gameState.currentQuestion + 1;
+    if (prizeEl) {
+        if (config.showPrizes !== false && t?.prizes) {
+            const prize = t.prizes[gameState.currentQuestion] || TRANSLATIONS.bg.prizes[gameState.currentQuestion] || `${(gameState.currentQuestion + 1) * 100} BGN`;
+            prizeEl.textContent = prize;
+        } else {
+            prizeEl.textContent = '';
         }
+    }
+    const indicator = document.querySelector('.level-indicator');
+    if (indicator && t && t.levelIndicator) {
+        const total = currentTotalQuestions;
+        const prizeText = config.showPrizes !== false ? t.levelIndicator.replace('{level}', gameState.currentQuestion + 1).replace('{prize}', prizeEl?.textContent || '') : `Въпрос: ${gameState.currentQuestion + 1}/${total}`;
+        indicator.innerHTML = prizeText;
     }
 }
 
 // ============================================
-// JOKERS (with theme support in 50:50)
+// JOKERS
 // ============================================
 function useFiftyFifty() {
     if (gameState.usedJokers.fiftyFifty) return;
@@ -1216,7 +1301,7 @@ function closePhoneModal() {
 }
 
 // ============================================
-// ANSWER CHECKING (original)
+// ANSWER CHECKING
 // ============================================
 function checkAnswer(selected, correct) {
     console.log("Answer clicked - selected:", selected, "correct:", correct);
@@ -1229,12 +1314,21 @@ function checkAnswer(selected, correct) {
     selectedBtn.style.color = '#000066';
     selectedBtn.style.border = '3px solid #cc9900';
 
+    clearTimeout(gameState.wrongAnswerTimeout);
+
     setTimeout(() => {
         if (selected === correct) {
             let sound;
-            if (gameState.currentQuestion === 4 || gameState.currentQuestion === 9) sound = 'correctAnswer3';
-            else if (gameState.currentQuestion < 5) sound = 'correctAnswerSound';
-            else sound = 'correctAnswer2';
+            const config = THEME_CONFIG[currentTheme] || {};
+            if (config.milestones && config.milestones.includes(gameState.currentQuestion)) {
+                sound = 'correctAnswer3';
+            } else if (gameState.currentQuestion === 4 || gameState.currentQuestion === 9) {
+                sound = 'correctAnswer3';
+            } else if (gameState.currentQuestion < 5) {
+                sound = 'correctAnswerSound';
+            } else {
+                sound = 'correctAnswer2';
+            }
 
             if (currentTheme === 'Minecraft') {
                 setTimeout(() => {
@@ -1244,14 +1338,14 @@ function checkAnswer(selected, correct) {
                     playSound(sound);
                     setTimeout(() => {
                         const t = TRANSLATIONS[currentLanguage];
-                        const prize = t?.prizes?.[gameState.currentQuestion] || `${(gameState.currentQuestion + 1) * 100} BGN`;
-                        alert(`✅ Правилен отговор! Спечелихте ${prize}!`);
+                        const prize = (config.showPrizes !== false) ? (t?.prizes?.[gameState.currentQuestion] || `${(gameState.currentQuestion + 1) * 100} BGN`) : '';
+                        alert(`✅ Правилен отговор!${prize ? ' Спечелихте ' + prize + '!' : ''}`);
                         gameState.currentQuestion++;
-                        if (gameState.currentQuestion < 15) {
+                        if (gameState.currentQuestion < currentTotalQuestions) {
                             playSound('moveForwardSound');
                             setTimeout(() => loadQuestion(), 1000);
                         } else {
-                            alert('🎉 ЧЕСТИТО! Спечелихте 100,000 BGN!');
+                            alert('🎉 ЧЕСТИТО! Спечелихте!');
                             gameState.currentQuestion = 0;
                             resetGame();
                         }
@@ -1264,37 +1358,40 @@ function checkAnswer(selected, correct) {
                 playSound(sound);
                 setTimeout(() => {
                     const t = TRANSLATIONS[currentLanguage];
-                    const prize = t?.prizes?.[gameState.currentQuestion] || `${(gameState.currentQuestion + 1) * 100} BGN`;
-                    alert(`✅ Правилен отговор! Спечелихте ${prize}!`);
+                    const prize = (config.showPrizes !== false) ? (t?.prizes?.[gameState.currentQuestion] || `${(gameState.currentQuestion + 1) * 100} BGN`) : '';
+                    alert(`✅ Правилен отговор!${prize ? ' Спечелихте ' + prize + '!' : ''}`);
                     gameState.currentQuestion++;
-                    if (gameState.currentQuestion < 15) {
+                    if (gameState.currentQuestion < currentTotalQuestions) {
                         playSound('moveForwardSound');
                         setTimeout(() => loadQuestion(), 1000);
                     } else {
-                        alert('🎉 ЧЕСТИТО! Спечелихте 100,000 BGN!');
+                        alert('🎉 ЧЕСТИТО! Спечелихте!');
                         gameState.currentQuestion = 0;
                         resetGame();
                     }
                 }, 3000);
             }
         } else {
-            // Wrong answer
             if (correctBtn) {
                 correctBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
                 correctBtn.style.color = '#000066';
                 correctBtn.style.border = '3px solid #00aa00';
             }
             playSound('wrongAnswerSound');
-
             if (currentTheme === 'Minecraft') {
-                setTimeout(() => {
+                gameState.wrongAnswerTimeout = setTimeout(() => {
                     showMinecraftDeathScreen();
                 }, 500);
-                // No alert for Minecraft theme
             } else {
-                setTimeout(() => {
+                gameState.wrongAnswerTimeout = setTimeout(() => {
+                    const config = THEME_CONFIG[currentTheme] || {};
                     const t = TRANSLATIONS[currentLanguage];
-                    const prize = gameState.currentQuestion > 0 ? (t?.prizes?.[gameState.currentQuestion - 1] || `${gameState.currentQuestion * 100} BGN`) : 'нищо';
+                    let prize = 'нищо';
+                    if (config.showPrizes !== false && gameState.currentQuestion > 0) {
+                        prize = t?.prizes?.[gameState.currentQuestion - 1] || `${gameState.currentQuestion * 100} BGN`;
+                    } else if (gameState.currentQuestion > 0) {
+                        prize = 'нищо (няма парична награда)';
+                    }
                     alert(`❌ Грешен отговор! Играта свърши. Спечелихте: ${prize}`);
                     gameState.currentQuestion = 0;
                     resetGame();
@@ -1307,60 +1404,270 @@ function checkAnswer(selected, correct) {
 function resetGame() {
     gameState.usedJokers = { fiftyFifty: false, audience: false, phone: false };
     document.querySelectorAll('.joker-btn').forEach(btn => { btn.disabled = false; btn.classList.remove('used'); });
+    stopUserThemeMusic();
+    cancelAllTimers();
     removeDeathZoom();
     setTimeout(loadQuestion, 1000);
 }
+
 // ============================================
-// MULTIPLAYER DIAGNOSTIC HELPER
+// SAVE THEME TO CLOUD
 // ============================================
-(function() {
-    // Wait for the page to load completely
-    window.addEventListener('load', function() {
-        console.log('🔍 Multiplayer Diagnostic Ready. Open the Console to see live messages.');
-        console.log('👉 Create a room as HOST and join from another device. Then watch below:');
+async function saveCurrentThemeToCloud() {
+    if (!currentThemeQuestions || !currentTheme) {
+        alert('Няма заредена тема.');
+        return;
+    }
+    const themeName = prompt('Въведете име на темата:', currentTheme + ' (потребителски)');
+    if (!themeName) return;
+
+    const payload = {
+        name: themeName,
+        questionsData: currentThemeQuestions,
+        category: THEME_CATEGORIES[currentTheme] || 'user'
+    };
+
+    try {
+        const response = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/themes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert(`✅ Темата е запазена с ID ${result.id}!`);
+        } else {
+            alert('❌ Грешка при запазване: ' + (result.error || 'неизвестна'));
+        }
+    } catch (err) {
+        alert('❌ Неуспешна връзка с API: ' + err.message);
+    }
+}
+
+// ============================================
+// CUSTOM THEME EDITOR
+// ============================================
+let editorQuestionCount = 0;
+
+function initEditor(questions = null) {
+    const container = document.getElementById('questionsContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    if (questions && questions.length > 0) {
+        questions.forEach((q, idx) => {
+            addQuestionBlock(idx, q.question, q.answers, q.correct);
+        });
+    } else {
+        addQuestionBlock(0, '', ['', '', '', ''], 0);
+    }
+    document.getElementById('themeNameInput').value = '';
+}
+
+function addQuestionBlock(id, question, answers, correct) {
+    const container = document.getElementById('questionsContainer');
+    if (!container) return;
+    const block = document.createElement('div');
+    block.className = 'question-block';
+    block.dataset.id = id;
+    block.innerHTML = `
+        <button class="remove-question-btn" onclick="this.parentElement.remove()">✖</button>
+        <h4>Въпрос #${id + 1}</h4>
+        <input type="text" class="question-input" placeholder="Текст на въпроса" value="${escapeHtml(question)}" />
+        <div class="answers">
+            <label>A: <input type="text" class="answer-input" value="${escapeHtml(answers[0] || '')}" /></label>
+            <label>B: <input type="text" class="answer-input" value="${escapeHtml(answers[1] || '')}" /></label>
+            <label>C: <input type="text" class="answer-input" value="${escapeHtml(answers[2] || '')}" /></label>
+            <label>D: <input type="text" class="answer-input" value="${escapeHtml(answers[3] || '')}" /></label>
+        </div>
+        <label>Верен отговор:
+            <select class="correct-select">
+                <option value="0" ${correct === 0 ? 'selected' : ''}>A</option>
+                <option value="1" ${correct === 1 ? 'selected' : ''}>B</option>
+                <option value="2" ${correct === 2 ? 'selected' : ''}>C</option>
+                <option value="3" ${correct === 3 ? 'selected' : ''}>D</option>
+            </select>
+        </label>
+    `;
+    container.appendChild(block);
+}
+
+function escapeHtml(text) {
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+async function saveEditorTheme() {
+    const nameInput = document.getElementById('themeNameInput');
+    if (!nameInput || nameInput.value.trim() === '') {
+        alert('Моля, въведете име на темата.');
+        return;
+    }
+    const themeName = nameInput.value.trim();
+
+    const musicInput = document.getElementById('themeMusicInput');
+    const musicUrl = musicInput ? musicInput.value.trim() : '';
+
+    const blocks = document.querySelectorAll('.question-block');
+    const questionsData = [];
+    blocks.forEach(block => {
+        const questionText = block.querySelector('.question-input').value.trim();
+        const answerInputs = block.querySelectorAll('.answer-input');
+        const correctSelect = block.querySelector('.correct-select');
+        if (questionText === '' || answerInputs[0].value.trim() === '' || answerInputs[1].value.trim() === '' ||
+            answerInputs[2].value.trim() === '' || answerInputs[3].value.trim() === '') {
+            return;
+        }
+        questionsData.push({
+            question: questionText,
+            answers: [
+                answerInputs[0].value.trim(),
+                answerInputs[1].value.trim(),
+                answerInputs[2].value.trim(),
+                answerInputs[3].value.trim()
+            ],
+            correct: parseInt(correctSelect.value)
+        });
     });
+    if (questionsData.length === 0) {
+        alert('Трябва да има поне един пълен въпрос.');
+        return;
+    }
 
-    // Override the original pollSignaling and sendSignal with instrumented versions
-    const origPoll = pollSignaling;
-    const origSend = sendSignal;
-
-    pollSignaling = async function() {
-        try {
-            const resp = await fetch(
-                `https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&since=${signalingSince}`
-            );
-            const messages = await resp.json();
-            // Print every polling cycle
-            if (messages.length > 0) {
-                console.log(`📨 POLL (${signalingClientId}):`, messages);
-            }
-            // Check for messages from the other client
-            for (const msg of messages) {
-                if (msg.client !== signalingClientId) {
-                    console.log('✅ FOUND OTHER CLIENT MESSAGE:', msg.client, msg.message);
-                }
-            }
-        } catch (e) {
-            console.error('❌ POLL ERROR:', e);
-        }
-        // Call original
-        return origPoll();
+    const payload = {
+        name: themeName,
+        questionsData: questionsData,
+        category: 'user',
+        musicUrl: musicUrl
     };
 
-    sendSignal = async function(data) {
-        console.log(`📤 SEND (${signalingClientId}):`, data);
-        try {
-            await fetch(
-                `https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&client=${signalingClientId}`,
-                { method: 'POST', body: JSON.stringify({ type: 'SIGNAL', ...data }), headers: { 'Content-Type': 'application/json' } }
-            );
-        } catch (e) {
-            console.error('❌ SEND ERROR:', e);
+    try {
+        const response = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/themes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert(`✅ Темата е запазена с ID ${result.id}!`);
+            document.getElementById('questionsContainer').innerHTML = '';
+            nameInput.value = '';
+            if (musicInput) musicInput.value = '';
+            initEditor();
+        } else {
+            alert('❌ Грешка при запазване: ' + (result.error || 'неизвестна'));
         }
-        // Call original
-        return origSend(data);
-    };
-})();
+    } catch (err) {
+        alert('❌ Неуспешна връзка с API: ' + err.message);
+    }
+}
+
+// ============================================
+// BROWSE UPLOADED THEMES
+// ============================================
+async function fetchAndDisplayThemes(searchTerm = '') {
+    const container = document.getElementById('themeListContainer');
+    if (!container) return;
+    container.innerHTML = '<p>Зареждане...</p>';
+
+    try {
+        const response = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/themes');
+        const themes = await response.json();
+        const filtered = themes.filter(t => {
+            const lowerSearch = searchTerm.toLowerCase();
+            return t.id.toString().includes(lowerSearch) || t.name.toLowerCase().includes(lowerSearch);
+        });
+
+        if (filtered.length === 0) {
+            container.innerHTML = '<p>Няма намерени теми.</p>';
+            return;
+        }
+
+        container.innerHTML = '';
+        filtered.forEach(theme => {
+            const card = document.createElement('div');
+            card.className = 'theme-card';
+            card.innerHTML = `
+                <h4>${escapeHtml(theme.name)} <small>(ID: ${theme.id})</small></h4>
+                <p>Категория: ${escapeHtml(theme.category)} | Въпроси: ${JSON.parse(theme.questionsData).length}</p>
+                <button class="spin-button" onclick="loadUserTheme(${theme.id})">▶ Играй</button>
+            `;
+            container.appendChild(card);
+        });
+    } catch (err) {
+        container.innerHTML = '<p>Грешка при зареждане на темите.</p>';
+        console.error(err);
+    }
+}
+
+async function loadUserTheme(themeId) {
+    const response = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/themes');
+    const themes = await response.json();
+    const theme = themes.find(t => t.id === themeId);
+    if (!theme) {
+        alert('Темата не е намерена.');
+        return;
+    }
+    const questions = JSON.parse(theme.questionsData);
+    if (!Array.isArray(questions) || questions.length === 0) {
+        alert('Темата не съдържа валидни въпроси.');
+        return;
+    }
+
+    currentTheme = theme.name;
+    currentThemeQuestions = questions;
+    currentTotalQuestions = questions.length;
+    gameState.currentQuestion = 0;
+    gameState.usedJokers = { fiftyFifty: false, audience: false, phone: false };
+    document.querySelectorAll('.joker-btn').forEach(b => { b.disabled = false; b.classList.remove('used'); });
+    cancelAllTimers();
+
+    document.getElementById('browseThemesScreen').style.display = 'none';
+
+    const gameContainer = document.getElementById('gameContainer');
+    gameContainer.style.display = 'block';
+    gameContainer.style.opacity = '1';
+    const moneyTree = document.getElementById('moneyTree');
+    if (moneyTree) { moneyTree.style.display = 'block'; generateMoneyTree(currentTheme); }
+    const levelIndicator = document.querySelector('.level-indicator');
+    if (levelIndicator) levelIndicator.style.display = 'block';
+    const backButtonContainer = document.querySelector('.game-back-button-container');
+    if (backButtonContainer) backButtonContainer.style.display = 'block';
+    const gameBack = document.getElementById('gameBackButton');
+    if (gameBack) gameBack.style.display = 'block';
+    const moneyTreeToggle = document.getElementById('moneyTreeToggle');
+    if (moneyTreeToggle) { moneyTreeToggle.style.display = 'block'; moneyTreeToggle.style.opacity = '1'; }
+    gameContainer.classList.remove('narrow');
+    moneyTreeToggle.innerHTML = '💰';
+    gameState.isMoneyTreeVisible = false;
+    setTimeout(() => updateGameContainerResponsiveness(), 100);
+    stopRetroMusic();
+    setThemeBackground(null);
+    stopThemeMusic();
+    removeMinecraftTheme();
+
+    stopUserThemeMusic();
+    if (theme.musicUrl) {
+        userThemeAudio = new Audio(theme.musicUrl);
+        userThemeAudio.loop = true;
+        userThemeAudio.volume = settings.musicVolume;
+        userThemeAudio.play().catch(e => console.warn('User theme music failed to play:', e));
+    }
+
+    const answersContainer = document.getElementById('answersContainer');
+    if (answersContainer) answersContainer.innerHTML = '';
+    loadQuestion();
+}
+
+let userThemeAudio = null;
+
+function stopUserThemeMusic() {
+    if (userThemeAudio) {
+        userThemeAudio.pause();
+        userThemeAudio.remove();
+        userThemeAudio = null;
+    }
+}
+
 // ============================================
 // MULTIPLAYER MODULE (D1 Polling) – with debug logs
 // ============================================
@@ -1530,7 +1837,6 @@ async function pollSignaling() {
         const resp = await fetch(url);
         const messages = await resp.json();
 
-        // 🔍 Show every poll result (at most 5 per second to avoid flooding)
         if (messages.length > 0) console.log(`📨 POLL (${signalingClientId}):`, messages);
 
         for (const msg of messages) {
@@ -1617,7 +1923,7 @@ function updatePlayerListUI() {
     playerCountDisplay.textContent = `Играчи: ${mpPlayers.length} / ${MAX_PLAYERS}`;
 }
 
-// ---- Game logic (same as before) ----
+// ---- Game logic ----
 function startMpGame(questions) {
     if (!isHost || mpGameStarted) return;
     if (!mpDataChannelOpen) { alert('Каналът за данни не е отворен все още.'); return; }
@@ -1714,12 +2020,12 @@ leaveRoomBtn.addEventListener('click', () => {
     roomScreen.style.display = 'none';
     document.getElementById('multiplayerMenuScreen').style.display = 'flex';
 });
+
 // ============================================
 // INITIALIZATION
 // ============================================
 document.addEventListener('DOMContentLoaded', function () {
     console.log("=== GAME INITIALIZATION STARTED ===");
-    // playIntroVideo(); // uncomment if you have intro video
 
     const startBtn = document.getElementById('startButton');
     const tutorialBtn = document.getElementById('tutorialButton');
@@ -1753,6 +2059,122 @@ document.addEventListener('DOMContentLoaded', function () {
             if (e.code === 'Escape') { closePhoneModal(); closeAudienceModal(); }
         });
         window.addEventListener('resize', updateGameContainerResponsiveness);
+
+        const saveBtn = document.getElementById('saveCloudBtn');
+        if (saveBtn) saveBtn.addEventListener('click', saveCurrentThemeToCloud);
+
+        // ===== Custom Editor & Browse buttons =====
+        const openEditorButton = document.getElementById('openEditorButton');
+        const openBrowseButton = document.getElementById('openBrowseButton');
+        const backFromEditorBtn = document.getElementById('backFromEditorBtn');
+        const backFromBrowseBtn = document.getElementById('backFromBrowseBtn');
+        const saveThemeBtn = document.getElementById('saveThemeBtn');
+        const addQuestionBtn = document.getElementById('addQuestionBtn');
+        const customEditorScreen = document.getElementById('customEditorScreen');
+        const browseThemesScreen = document.getElementById('browseThemesScreen');
+        const startMenu = document.getElementById('startMenu');
+
+        if (openEditorButton && openBrowseButton && customEditorScreen && browseThemesScreen) {
+            openEditorButton.addEventListener('click', () => {
+                performTransition(() => {
+                    startMenu.style.display = 'none';
+                    customEditorScreen.style.display = 'flex';
+                    initEditor();
+                });
+            });
+
+            openBrowseButton.addEventListener('click', () => {
+                performTransition(() => {
+                    startMenu.style.display = 'none';
+                    browseThemesScreen.style.display = 'flex';
+                    fetchAndDisplayThemes('');
+                });
+            });
+
+            backFromEditorBtn.addEventListener('click', () => {
+                performTransition(() => {
+                    customEditorScreen.style.display = 'none';
+                    startMenu.style.display = 'flex';
+                });
+            });
+
+            backFromBrowseBtn.addEventListener('click', () => {
+                performTransition(() => {
+                    browseThemesScreen.style.display = 'none';
+                    startMenu.style.display = 'flex';
+                });
+            });
+
+            saveThemeBtn.addEventListener('click', saveEditorTheme);
+
+            addQuestionBtn.addEventListener('click', () => {
+                addQuestionBlock(0, '', ['', '', '', ''], 0);
+            });
+        }
+
+        const searchInput = document.getElementById('themeSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                fetchAndDisplayThemes(e.target.value);
+            });
+        }
+
+        // ===== MULTIPLAYER BUTTONS =====
+        const multiplayerButton = document.getElementById('multiplayerButton');
+        const createRoomButton = document.getElementById('createRoomButton');
+        const joinRoomButton = document.getElementById('joinRoomButton');
+        const backFromMultiMenuButton = document.getElementById('backFromMultiMenuButton');
+        const confirmJoinButton = document.getElementById('confirmJoinButton');
+        const backFromJoinButton = document.getElementById('backFromJoinButton');
+        const multiplayerMenuScreen = document.getElementById('multiplayerMenuScreen');
+        const joinRoomScreen = document.getElementById('joinRoomScreen');
+
+        if (multiplayerButton && multiplayerMenuScreen) {
+            multiplayerButton.addEventListener('click', () => {
+                performTransition(() => {
+                    startMenu.style.display = 'none';
+                    multiplayerMenuScreen.style.display = 'flex';
+                });
+            });
+
+            createRoomButton.addEventListener('click', () => {
+                performTransition(() => {
+                    multiplayerMenuScreen.style.display = 'none';
+                    createMultiplayerRoom();
+                });
+            });
+
+            joinRoomButton.addEventListener('click', () => {
+                performTransition(() => {
+                    multiplayerMenuScreen.style.display = 'none';
+                    joinRoomScreen.style.display = 'flex';
+                });
+            });
+
+            backFromMultiMenuButton.addEventListener('click', () => {
+                performTransition(() => {
+                    multiplayerMenuScreen.style.display = 'none';
+                    startMenu.style.display = 'flex';
+                });
+            });
+
+            confirmJoinButton.addEventListener('click', () => {
+                const code = document.getElementById('roomCodeInput').value.trim();
+                if (code) {
+                    performTransition(() => {
+                        joinMultiplayerRoom(code);
+                    });
+                }
+            });
+
+            backFromJoinButton.addEventListener('click', () => {
+                performTransition(() => {
+                    joinRoomScreen.style.display = 'none';
+                    multiplayerMenuScreen.style.display = 'flex';
+                });
+            });
+        }
+
         console.log("=== GAME INITIALIZATION COMPLETE ===");
     } catch (err) {
         console.error("CRITICAL ERROR during initialization:", err);
