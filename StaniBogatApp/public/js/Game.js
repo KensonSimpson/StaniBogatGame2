@@ -1813,33 +1813,32 @@ function populateThemeBrowser() {
 }
 
 function connectSignaling() {
-    if (!isHost) alert('Joiner connectSignaling is running – check console');
     signalingPollInterval = setInterval(pollSignaling, 500);
     createPeerConnection();
     if (isHost) {
         mpDataChannel = mpPeerConnection.createDataChannel('game');
         setupDataChannel(mpDataChannel);
         console.log('📦 Host created data channel');
+        // Make sure the host always sees any earlier JOIN
+        signalingSince = 0;
+        // Force an immediate poll so it catches a joiner that connected just before
+        pollSignaling();
     } else {
         mpPeerConnection.ondatachannel = (event) => {
             mpDataChannel = event.channel;
             setupDataChannel(mpDataChannel);
             console.log('📦 Joiner received data channel');
         };
-    }
-
-    if (isHost) signalingSince = 0;
-
-    if (!isHost) {
+        // Joiner sends a JOIN announcement so the host knows we're here
         fetch(`https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&client=${signalingClientId}`, {
             method: 'POST',
             body: JSON.stringify({ type: 'JOIN' }),
             headers: { 'Content-Type': 'application/json' }
-        });
-        console.log('📤 Joiner posted JOIN');
+        })
+        .then(r => console.log('📤 Joiner posted JOIN – status', r.status))
+        .catch(err => console.error('❌ JOIN POST failed:', err));
     }
 }
-
 async function pollSignaling() {
     try {
         const url = `https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&since=${signalingSince}`;
