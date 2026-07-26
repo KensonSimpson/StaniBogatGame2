@@ -1750,7 +1750,7 @@ function resetUIForRole() {
     mpPeerConnection = null;
     mpDataChannel = null;
     if (signalingPollInterval) clearInterval(signalingPollInterval);
-    signalingSince = Date.now();
+    signalingSince = 0;   // ← changed: always look for messages from the beginning
     startMpGameBtn.style.display = 'none';
     themeBrowserArea.style.display = 'none';
     mpConfirmNameBtn.style.display = 'inline-block';
@@ -1828,6 +1828,19 @@ function connectSignaling() {
             console.log('📦 Joiner received data channel');
         };
     }
+
+    // Permanent fix: ensure host always sees joiners
+    if (isHost) signalingSince = 0;
+
+    // Joiner sends a JOIN announcement
+    if (!isHost) {
+        fetch(`https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&client=${signalingClientId}`, {
+            method: 'POST',
+            body: JSON.stringify({ type: 'JOIN' }),
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+}
 
     // Joiner sends a JOIN announcement so the host knows to start the offer
     if (!isHost) {
