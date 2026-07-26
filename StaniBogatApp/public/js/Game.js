@@ -1669,7 +1669,7 @@ function stopUserThemeMusic() {
 }
 
 // ============================================
-// MULTIPLAYER MODULE (D1 Polling) – final fixed
+// MULTIPLAYER MODULE (final, fixed)
 // ============================================
 const MAX_PLAYERS = 30;
 let mpPeerConnection = null;
@@ -1687,8 +1687,9 @@ let mpDataChannelOpen = false;
 let signalingClientId = '';
 let signalingSince = 0;
 let signalingPollInterval = null;
+let mpQuestionTimer = null;      // to clear pending game timers
 
-// --- Room screen (with inline onclick) ---
+// --- Room screen ---
 const roomScreen = document.createElement('div');
 roomScreen.id = 'mpRoomScreen';
 roomScreen.className = 'multiplayer-room-screen';
@@ -1749,6 +1750,7 @@ function resetUIForRole() {
     mpPeerConnection = null;
     mpDataChannel = null;
     if (signalingPollInterval) clearInterval(signalingPollInterval);
+    clearTimeout(mpQuestionTimer);    // clear any leftover game timer
     signalingSince = 0;
     startMpGameBtn.style.display = 'none';
     themeBrowserArea.style.display = 'none';
@@ -1760,14 +1762,18 @@ function resetUIForRole() {
     connectionStatus.textContent = 'Очакване на друг играч…';
 }
 
-// ---- Inline onclick function ----
+// ---- Inline onclick for confirm button ----
 function confirmNameAndConnect() {
     mpPlayerName = mpNameInput.value.trim() || ('Player-' + Date.now().toString(36).substring(0,4));
     if (mpPlayerName.length > 20) mpPlayerName = mpPlayerName.substring(0, 20);
     mpNameInput.style.display = 'none';
     document.getElementById('mpConfirmNameBtn').style.display = 'none';
+    // Host adds itself with crown, joiner adds itself with no emoji
     if (isHost) {
         mpPlayers = [{ id: 'host', name: mpPlayerName, emoji: '👑', isHost: true }];
+        updatePlayerListUI();
+    } else {
+        mpPlayers = [{ id: 'joiner', name: mpPlayerName, emoji: '', isHost: false }];
         updatePlayerListUI();
     }
     connectSignaling();
@@ -1813,23 +1819,21 @@ function populateThemeBrowser() {
 }
 
 function connectSignaling() {
+    if (!isHost) alert('Joiner connectSignaling is running – check console');   // keep for debugging
     signalingPollInterval = setInterval(pollSignaling, 500);
     createPeerConnection();
     if (isHost) {
         mpDataChannel = mpPeerConnection.createDataChannel('game');
         setupDataChannel(mpDataChannel);
         console.log('📦 Host created data channel');
-        // Make sure the host always sees any earlier JOIN
         signalingSince = 0;
-        // Force an immediate poll so it catches a joiner that connected just before
-        pollSignaling();
+        pollSignaling();    // immediate poll to catch any joiners
     } else {
         mpPeerConnection.ondatachannel = (event) => {
             mpDataChannel = event.channel;
             setupDataChannel(mpDataChannel);
             console.log('📦 Joiner received data channel');
         };
-        // Joiner sends a JOIN announcement so the host knows we're here
         fetch(`https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&client=${signalingClientId}`, {
             method: 'POST',
             body: JSON.stringify({ type: 'JOIN' }),
@@ -1839,6 +1843,7 @@ function connectSignaling() {
         .catch(err => console.error('❌ JOIN POST failed:', err));
     }
 }
+
 async function pollSignaling() {
     try {
         const url = `https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&since=${signalingSince}`;
@@ -1911,18 +1916,31 @@ function setupDataChannel(channel) {
             console.log('🎉 Host ready – theme browser shown');
         }
     };
+
     channel.onmessage = (event) => {
         const msg = JSON.parse(event.data);
         switch (msg.type) {
             case 'PLAYER_JOIN':
-                mpPlayers.push({ id: msg.id, name: msg.name, emoji: msg.id === 'host' ? '👑' : '🎮', isHost: msg.id === 'host' });
-                updatePlayerListUI();
+                if (!mpPlayers.find(p => p.id === msg.id)) {
+                    mpPlayers.push({ id: msg.id, name: msg.name, emoji: msg.id === 'host' ? '👑' : '', isHost: msg.id === 'host' });
+                    updatePlayerListUI();
+                }
                 break;
-            case 'START_GAME': startMpGame(msg.questions); break;
-            case 'QUESTION': displayMpQuestion(msg); break;
-            case 'ANSWER': handleMpAnswer(msg.playerId, msg.answerIndex); break;
-            case 'ROUND_RESULT': showMpRoundResult(msg); break;
-            case 'GAME_ENDED': endMpGame(msg.scores); break;
+            case 'START_GAME':
+                beginMpGame(msg.questions);
+                break;
+            case 'QUESTION':
+                displayMpQuestion(msg);
+                break;
+            case 'ANSWER':
+                handleMpAnswer(msg.playerId, msg.answerIndex);
+                break;
+            case 'ROUND_RESULT':
+                showMpRoundResult(msg);
+                break;
+            case 'GAME_ENDED':
+                endMpGame(msg.scores);
+                break;
         }
     };
 }
@@ -1937,10 +1955,16 @@ function updatePlayerListUI() {
     playerCountDisplay.textContent = `Играчи: ${mpPlayers.length} / ${MAX_PLAYERS}`;
 }
 
-// ---- Game logic ----
+// ---- Game start flow ----
 function startMpGame(questions) {
     if (!isHost || mpGameStarted) return;
     if (!mpDataChannelOpen) { alert('Каналът за данни не е отворен все още.'); return; }
+    if (!questions || questions.length === 0) { alert('Няма въпроси за тази тема.'); return; }
+    mpDataChannel.send(JSON.stringify({ type: 'START_GAME', questions }));
+    beginMpGame(questions);
+}
+
+function beginMpGame(questions) {
     mpGameStarted = true;
     mpQuestions = questions;
     mpCurrentQuestion = 0;
@@ -1948,11 +1972,11 @@ function startMpGame(questions) {
     mpPlayers.forEach(p => mpScores[p.id] = 0);
     themeBrowserArea.style.display = 'none';
     startMpGameBtn.style.display = 'none';
-    mpDataChannel.send(JSON.stringify({ type: 'START_GAME', questions }));
     sendNextMpQuestion();
 }
 
 function sendNextMpQuestion() {
+    clearTimeout(mpQuestionTimer);
     if (mpCurrentQuestion >= mpQuestions.length) {
         mpDataChannel.send(JSON.stringify({ type: 'GAME_ENDED', scores: mpScores }));
         endMpGame(mpScores);
@@ -1961,7 +1985,10 @@ function sendNextMpQuestion() {
     const q = mpQuestions[mpCurrentQuestion];
     mpDataChannel.send(JSON.stringify({ type: 'QUESTION', question: q.question, answers: q.answers, timeLimit: 15 }));
     mpAnswers = {};
-    setTimeout(() => { mpCurrentQuestion++; sendNextMpQuestion(); }, 15000);
+    mpQuestionTimer = setTimeout(() => {
+        mpCurrentQuestion++;
+        sendNextMpQuestion();
+    }, 15000);
 }
 
 function displayMpQuestion(data) {
@@ -1987,6 +2014,7 @@ function handleMpAnswer(playerId, answerIndex) {
 }
 
 function finishMpQuestion() {
+    clearTimeout(mpQuestionTimer);
     const q = mpQuestions[mpCurrentQuestion];
     const correct = q.correct;
     const results = mpPlayers.map(p => ({
@@ -2002,7 +2030,7 @@ function finishMpQuestion() {
     });
     mpDataChannel.send(JSON.stringify({ type: 'ROUND_RESULT', correct, results, scores: mpScores }));
     mpCurrentQuestion++;
-    setTimeout(() => sendNextMpQuestion(), 3000);
+    sendNextMpQuestion();
 }
 
 function showMpRoundResult(data) {
@@ -2011,6 +2039,7 @@ function showMpRoundResult(data) {
 }
 
 function endMpGame(scores) {
+    clearTimeout(mpQuestionTimer);
     const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
     const winner = sorted[0];
     alert(`Победител: ${mpPlayers.find(p => p.id === winner[0])?.name || 'Unknown'} с ${winner[1]} точки!`);
@@ -2027,6 +2056,7 @@ function endMpGame(scores) {
 leaveRoomBtn.addEventListener('click', () => {
     if (mpPeerConnection) mpPeerConnection.close();
     if (signalingPollInterval) clearInterval(signalingPollInterval);
+    clearTimeout(mpQuestionTimer);
     mpPlayers = [];
     mpAnswers = {};
     mpGameStarted = false;
