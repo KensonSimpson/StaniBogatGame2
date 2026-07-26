@@ -1750,7 +1750,7 @@ function resetUIForRole() {
     mpPeerConnection = null;
     mpDataChannel = null;
     if (signalingPollInterval) clearInterval(signalingPollInterval);
-    signalingSince = 0;   // ← changed: always look for messages from the beginning
+    signalingSince = 0;   // ← already changed
     startMpGameBtn.style.display = 'none';
     themeBrowserArea.style.display = 'none';
     mpConfirmNameBtn.style.display = 'inline-block';
@@ -1815,6 +1815,9 @@ function populateThemeBrowser() {
 }
 
 function connectSignaling() {
+    // ALERT for joiner: this will show if the join flow starts
+    if (!isHost) alert('Joiner connectSignaling is running – check console');
+
     signalingPollInterval = setInterval(pollSignaling, 500);
     createPeerConnection();
     if (isHost) {
@@ -1839,16 +1842,7 @@ function connectSignaling() {
             body: JSON.stringify({ type: 'JOIN' }),
             headers: { 'Content-Type': 'application/json' }
         });
-    }
-}
-
-    // Joiner sends a JOIN announcement so the host knows to start the offer
-    if (!isHost) {
-        fetch(`https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&client=${signalingClientId}`, {
-            method: 'POST',
-            body: JSON.stringify({ type: 'JOIN' }),
-            headers: { 'Content-Type': 'application/json' }
-        });
+        console.log('📤 Joiner posted JOIN');
     }
 }
 
