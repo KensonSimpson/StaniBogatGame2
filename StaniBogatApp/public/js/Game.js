@@ -1669,7 +1669,7 @@ function stopUserThemeMusic() {
 }
 
 // ============================================
-// MULTIPLAYER MODULE (robust join detection)
+// MULTIPLAYER MODULE (FINAL FIXED VERSION)
 // ============================================
 const MAX_PLAYERS = 30;
 let mpPeerConnection = null;
@@ -1688,7 +1688,7 @@ let signalingClientId = '';
 let signalingSince = 0;
 let signalingPollInterval = null;
 let mpQuestionTimer = null;
-let selectedQuestions = null;   // host stores selected theme questions
+let selectedQuestions = null;
 
 // --- Room screen ---
 const roomScreen = document.createElement('div');
@@ -1771,7 +1771,6 @@ function confirmNameAndConnect() {
     if (mpPlayerName.length > 20) mpPlayerName = mpPlayerName.substring(0, 20);
     mpNameInput.style.display = 'none';
     document.getElementById('mpConfirmNameBtn').style.display = 'none';
-    // Host adds itself with crown, joiner adds itself without emoji
     if (isHost) {
         mpPlayers = [{ id: 'host', name: mpPlayerName, emoji: '👑', isHost: true }];
         updatePlayerListUI();
@@ -1790,15 +1789,13 @@ function populateThemeBrowser() {
         chip.className = 'theme-chip';
         chip.textContent = themeKey;
         chip.addEventListener('click', () => {
-            // Deselect all, select this one
             document.querySelectorAll('.theme-chip').forEach(c => c.style.borderColor = '');
             chip.style.borderColor = 'lime';
             selectedQuestions = QUESTIONS_DATA[themeKey]['bg'] || QUESTIONS_DATA[themeKey][Object.keys(QUESTIONS_DATA[themeKey])[0]];
-            startMpGameBtn.disabled = false;   // enable Start button
+            startMpGameBtn.disabled = false;
         });
         themeBrowserInline.appendChild(chip);
     }
-    // Also fetch user themes
     fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/themes')
         .then(r => r.json())
         .then(themes => {
@@ -1827,12 +1824,13 @@ startMpGameBtn.addEventListener('click', () => {
 });
 
 // ============================================
-// RELIABLE SIGNALING
+// RELIABLE SIGNALING (with aggressive re‑polling)
 // ============================================
 function connectSignaling() {
     if (!isHost) {
         alert('Joiner connectSignaling is running – check console');
     }
+    signalingSince = 0;   // ← CRITICAL: both start from 0
     signalingPollInterval = setInterval(pollSignaling, 500);
     createPeerConnection();
 
@@ -1841,9 +1839,7 @@ function connectSignaling() {
         setupDataChannel(mpDataChannel);
         console.log('📦 Host created data channel');
         // Aggressive polling in the first few seconds
-        signalingSince = 0;
         pollSignaling();
-        // Additional polls at 1s, 2s, 3s to catch late JOINs
         setTimeout(() => { if (!mpDataChannelOpen) pollSignaling(); }, 1000);
         setTimeout(() => { if (!mpDataChannelOpen) pollSignaling(); }, 2000);
         setTimeout(() => { if (!mpDataChannelOpen) pollSignaling(); }, 3000);
@@ -1853,7 +1849,7 @@ function connectSignaling() {
             setupDataChannel(mpDataChannel);
             console.log('📦 Joiner received data channel');
         };
-        // Joiner sends JOIN message
+        // Joiner sends JOIN immediately
         const url = `https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&client=${signalingClientId}`;
         console.log('📤 Joiner sending JOIN to:', url);
         fetch(url, {
@@ -1863,6 +1859,8 @@ function connectSignaling() {
         })
         .then(r => console.log('📤 Joiner posted JOIN – status', r.status))
         .catch(err => console.error('❌ JOIN POST failed:', err));
+        // Also poll immediately
+        pollSignaling();
     }
 }
 
@@ -1991,12 +1989,11 @@ function beginMpGame(questions) {
     const gameContainer = document.getElementById('gameContainer');
     gameContainer.style.display = 'block';
     gameContainer.style.opacity = '1';
-    // Set up single-player-like UI
-    currentTheme = null;   // multiplayer doesn't use single-player theme
+    currentTheme = null;
     currentThemeQuestions = questions;
     currentTotalQuestions = questions.length;
     const moneyTree = document.getElementById('moneyTree');
-    if (moneyTree) { moneyTree.style.display = 'block'; generateMoneyTree(''); }   // use default prize list
+    if (moneyTree) { moneyTree.style.display = 'block'; generateMoneyTree(''); }
     const levelIndicator = document.querySelector('.level-indicator');
     if (levelIndicator) levelIndicator.style.display = 'block';
     updateLevelIndicator();
@@ -2015,7 +2012,7 @@ function sendNextMpQuestion() {
     const q = mpQuestions[mpCurrentQuestion];
     mpDataChannel.send(JSON.stringify({ type: 'QUESTION', question: q.question, answers: q.answers, timeLimit: 15 }));
     mpAnswers = {};
-    displayMpQuestion({ question: q.question, answers: q.answers });   // show on host/joiner immediately
+    displayMpQuestion({ question: q.question, answers: q.answers });
     mpQuestionTimer = setTimeout(() => {
         mpCurrentQuestion++;
         sendNextMpQuestion();
