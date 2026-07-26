@@ -1851,16 +1851,13 @@ async function pollSignaling() {
             if (msg.client !== signalingClientId) {
                 console.log('✅ OTHER CLIENT MESSAGE:', msg.client, msg.message);
                 const data = JSON.parse(msg.message);
-                // NEW: handle explicit JOIN message
                 if (data.type === 'JOIN') {
                     console.log('👋 JOIN received, creating offer');
                     mpPeerConnection.createOffer().then(offer => {
                         mpPeerConnection.setLocalDescription(offer);
                         sendSignal({ sdp: offer });
                     });
-                    continue;
-                }
-                if (data.type === 'SIGNAL') {
+                } else if (data.type === 'SIGNAL') {
                     if (data.sdp) {
                         console.log('🔄 Applying SDP');
                         await mpPeerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
@@ -1875,8 +1872,9 @@ async function pollSignaling() {
                         await mpPeerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
                     }
                 }
+                // Only update the "since" timestamp when we see a message from the other client.
+                signalingSince = Math.max(signalingSince, msg.timestamp);
             }
-            signalingSince = Math.max(signalingSince, msg.timestamp);
         }
     } catch (e) {
         console.error('❌ POLL ERROR:', e);
