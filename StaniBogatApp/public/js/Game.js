@@ -1669,7 +1669,7 @@ function stopUserThemeMusic() {
 }
 
 // ============================================
-// MULTIPLAYER MODULE (final, fixed)
+// MULTIPLAYER MODULE (final, polished)
 // ============================================
 const MAX_PLAYERS = 30;
 let mpPeerConnection = null;
@@ -1687,7 +1687,8 @@ let mpDataChannelOpen = false;
 let signalingClientId = '';
 let signalingSince = 0;
 let signalingPollInterval = null;
-let mpQuestionTimer = null;      // to clear pending game timers
+let mpQuestionTimer = null;
+let selectedQuestions = null;   // host stores selected theme questions
 
 // --- Room screen ---
 const roomScreen = document.createElement('div');
@@ -1706,7 +1707,7 @@ roomScreen.innerHTML = `
             <p style="color:gold; margin-bottom:8px;">Избери тема:</p>
             <div class="theme-browser-inline" id="themeBrowserInline"></div>
         </div>
-        <button id="startMpGameBtn" class="start-room-btn">Старт</button>
+        <button id="startMpGameBtn" class="start-room-btn" disabled>Старт</button>
         <button id="leaveRoomBtn" class="leave-room-btn">Излез</button>
     </div>
 `;
@@ -1728,6 +1729,7 @@ async function createMultiplayerRoom() {
     displayRoomCode.textContent = mpRoomCode;
     isHost = true;
     signalingClientId = 'host';
+    selectedQuestions = null;
     resetUIForRole();
     document.getElementById('multiplayerMenuScreen').style.display = 'none';
     roomScreen.style.display = 'flex';
@@ -1750,9 +1752,10 @@ function resetUIForRole() {
     mpPeerConnection = null;
     mpDataChannel = null;
     if (signalingPollInterval) clearInterval(signalingPollInterval);
-    clearTimeout(mpQuestionTimer);    // clear any leftover game timer
+    clearTimeout(mpQuestionTimer);
     signalingSince = 0;
     startMpGameBtn.style.display = 'none';
+    startMpGameBtn.disabled = true;
     themeBrowserArea.style.display = 'none';
     mpNameInput.style.display = 'inline-block';
     mpNameInput.value = '';
@@ -1768,7 +1771,7 @@ function confirmNameAndConnect() {
     if (mpPlayerName.length > 20) mpPlayerName = mpPlayerName.substring(0, 20);
     mpNameInput.style.display = 'none';
     document.getElementById('mpConfirmNameBtn').style.display = 'none';
-    // Host adds itself with crown, joiner adds itself with no emoji
+    // Host adds itself with crown, joiner adds itself without emoji
     if (isHost) {
         mpPlayers = [{ id: 'host', name: mpPlayerName, emoji: '👑', isHost: true }];
         updatePlayerListUI();
@@ -1779,7 +1782,7 @@ function confirmNameAndConnect() {
     connectSignaling();
 }
 
-// ---- Populate theme browser ----
+// ---- Populate theme browser (only for host) ----
 function populateThemeBrowser() {
     themeBrowserInline.innerHTML = '';
     for (const themeKey in QUESTIONS_DATA) {
@@ -1787,16 +1790,15 @@ function populateThemeBrowser() {
         chip.className = 'theme-chip';
         chip.textContent = themeKey;
         chip.addEventListener('click', () => {
-            if (!mpDataChannelOpen) { alert('Връзката още не е готова. Изчакайте.'); return; }
-            let questions = QUESTIONS_DATA[themeKey]['bg'] || QUESTIONS_DATA[themeKey][Object.keys(QUESTIONS_DATA[themeKey])[0]];
-            if (questions) {
-                document.querySelectorAll('.theme-chip').forEach(c => c.style.borderColor = '');
-                chip.style.borderColor = 'lime';
-                startMpGame(questions);
-            }
+            // Deselect all, select this one
+            document.querySelectorAll('.theme-chip').forEach(c => c.style.borderColor = '');
+            chip.style.borderColor = 'lime';
+            selectedQuestions = QUESTIONS_DATA[themeKey]['bg'] || QUESTIONS_DATA[themeKey][Object.keys(QUESTIONS_DATA[themeKey])[0]];
+            startMpGameBtn.disabled = false;   // enable Start button
         });
         themeBrowserInline.appendChild(chip);
     }
+    // Also fetch user themes
     fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/themes')
         .then(r => r.json())
         .then(themes => {
@@ -1805,21 +1807,26 @@ function populateThemeBrowser() {
                 chip.className = 'theme-chip';
                 chip.textContent = theme.name + ' (ID:' + theme.id + ')';
                 chip.addEventListener('click', () => {
-                    if (!mpDataChannelOpen) { alert('Връзката още не е готова. Изчакайте.'); return; }
-                    const questions = JSON.parse(theme.questionsData);
-                    if (questions) {
-                        document.querySelectorAll('.theme-chip').forEach(c => c.style.borderColor = '');
-                        chip.style.borderColor = 'lime';
-                        startMpGame(questions);
-                    }
+                    document.querySelectorAll('.theme-chip').forEach(c => c.style.borderColor = '');
+                    chip.style.borderColor = 'lime';
+                    selectedQuestions = JSON.parse(theme.questionsData);
+                    startMpGameBtn.disabled = false;
                 });
                 themeBrowserInline.appendChild(chip);
             });
         }).catch(() => {});
 }
 
+// ---- Start button handler ----
+startMpGameBtn.addEventListener('click', () => {
+    if (!isHost || mpGameStarted) return;
+    if (!mpDataChannelOpen) { alert('Каналът за данни не е отворен все още.'); return; }
+    if (!selectedQuestions || selectedQuestions.length === 0) { alert('Моля, изберете тема.'); return; }
+    mpDataChannel.send(JSON.stringify({ type: 'START_GAME', questions: selectedQuestions }));
+    beginMpGame(selectedQuestions);
+});
+
 function connectSignaling() {
-    if (!isHost) alert('Joiner connectSignaling is running – check console');   // keep for debugging
     signalingPollInterval = setInterval(pollSignaling, 500);
     createPeerConnection();
     if (isHost) {
@@ -1827,7 +1834,7 @@ function connectSignaling() {
         setupDataChannel(mpDataChannel);
         console.log('📦 Host created data channel');
         signalingSince = 0;
-        pollSignaling();    // immediate poll to catch any joiners
+        pollSignaling();
     } else {
         mpPeerConnection.ondatachannel = (event) => {
             mpDataChannel = event.channel;
@@ -1955,15 +1962,7 @@ function updatePlayerListUI() {
     playerCountDisplay.textContent = `Играчи: ${mpPlayers.length} / ${MAX_PLAYERS}`;
 }
 
-// ---- Game start flow ----
-function startMpGame(questions) {
-    if (!isHost || mpGameStarted) return;
-    if (!mpDataChannelOpen) { alert('Каналът за данни не е отворен все още.'); return; }
-    if (!questions || questions.length === 0) { alert('Няма въпроси за тази тема.'); return; }
-    mpDataChannel.send(JSON.stringify({ type: 'START_GAME', questions }));
-    beginMpGame(questions);
-}
-
+// ---- Game start flow (both sides) ----
 function beginMpGame(questions) {
     mpGameStarted = true;
     mpQuestions = questions;
@@ -1972,6 +1971,22 @@ function beginMpGame(questions) {
     mpPlayers.forEach(p => mpScores[p.id] = 0);
     themeBrowserArea.style.display = 'none';
     startMpGameBtn.style.display = 'none';
+    // Switch to game container
+    roomScreen.style.display = 'none';
+    const gameContainer = document.getElementById('gameContainer');
+    gameContainer.style.display = 'block';
+    gameContainer.style.opacity = '1';
+    // Set up single-player-like UI
+    currentTheme = null;   // multiplayer doesn't use single-player theme
+    currentThemeQuestions = questions;
+    currentTotalQuestions = questions.length;
+    const moneyTree = document.getElementById('moneyTree');
+    if (moneyTree) { moneyTree.style.display = 'block'; generateMoneyTree(''); }   // use default prize list
+    const levelIndicator = document.querySelector('.level-indicator');
+    if (levelIndicator) levelIndicator.style.display = 'block';
+    updateLevelIndicator();
+    const answersContainer = document.getElementById('answersContainer');
+    if (answersContainer) answersContainer.innerHTML = '';
     sendNextMpQuestion();
 }
 
@@ -1985,6 +2000,7 @@ function sendNextMpQuestion() {
     const q = mpQuestions[mpCurrentQuestion];
     mpDataChannel.send(JSON.stringify({ type: 'QUESTION', question: q.question, answers: q.answers, timeLimit: 15 }));
     mpAnswers = {};
+    displayMpQuestion({ question: q.question, answers: q.answers });   // show on host/joiner immediately
     mpQuestionTimer = setTimeout(() => {
         mpCurrentQuestion++;
         sendNextMpQuestion();
@@ -2045,6 +2061,7 @@ function endMpGame(scores) {
     alert(`Победител: ${mpPlayers.find(p => p.id === winner[0])?.name || 'Unknown'} с ${winner[1]} точки!`);
     mpGameStarted = false;
     roomScreen.style.display = 'none';
+    document.getElementById('gameContainer').style.display = 'none';
     document.getElementById('multiplayerMenuScreen').style.display = 'flex';
     if (mpPeerConnection) mpPeerConnection.close();
     if (signalingPollInterval) clearInterval(signalingPollInterval);
