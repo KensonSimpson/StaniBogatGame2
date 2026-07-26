@@ -1669,7 +1669,7 @@ function stopUserThemeMusic() {
 }
 
 // ============================================
-// MULTIPLAYER MODULE (D1 Polling) – with debug logs
+// MULTIPLAYER MODULE (D1 Polling) – final fixed
 // ============================================
 const MAX_PLAYERS = 30;
 let mpPeerConnection = null;
@@ -1688,7 +1688,7 @@ let signalingClientId = '';
 let signalingSince = 0;
 let signalingPollInterval = null;
 
-// --- Room screen ---
+// --- Room screen (with inline onclick) ---
 const roomScreen = document.createElement('div');
 roomScreen.id = 'mpRoomScreen';
 roomScreen.className = 'multiplayer-room-screen';
@@ -1696,8 +1696,8 @@ roomScreen.innerHTML = `
     <div class="room-content">
         <h2>Стая</h2>
         <p>Код: <span class="room-code" id="displayRoomCode">------</span></p>
-        <input type="text" id="mpNameInput" class="room-name-input" placeholder="Вашето име..." maxlength="20" />
-        <button id="mpConfirmNameBtn" class="start-room-btn" style="display:inline-block;">Потвърди името</button>
+        <input type="text" id="mpNameInput" class="room-name-input" placeholder="Вашето име..." maxlength="20" autocomplete="off" />
+        <button id="mpConfirmNameBtn" class="start-room-btn" style="display:inline-block;" onclick="confirmNameAndConnect()">Потвърди името</button>
         <p class="player-count" id="playerCountDisplay">Играчи: 0 / ${MAX_PLAYERS}</p>
         <div class="player-list" id="playerList"></div>
         <p id="connectionStatus" style="color:#ccc; margin:10px 0; display:none;">Очакване на друг играч…</p>
@@ -1713,7 +1713,6 @@ document.body.appendChild(roomScreen);
 
 const displayRoomCode = document.getElementById('displayRoomCode');
 const mpNameInput = document.getElementById('mpNameInput');
-const mpConfirmNameBtn = document.getElementById('mpConfirmNameBtn');
 const playerCountDisplay = document.getElementById('playerCountDisplay');
 const playerListEl = document.getElementById('playerList');
 const themeBrowserArea = document.getElementById('themeBrowserArea');
@@ -1750,10 +1749,9 @@ function resetUIForRole() {
     mpPeerConnection = null;
     mpDataChannel = null;
     if (signalingPollInterval) clearInterval(signalingPollInterval);
-    signalingSince = 0;   // ← already changed
+    signalingSince = 0;
     startMpGameBtn.style.display = 'none';
     themeBrowserArea.style.display = 'none';
-    mpConfirmNameBtn.style.display = 'inline-block';
     mpNameInput.style.display = 'inline-block';
     mpNameInput.value = '';
     mpPlayers = [];
@@ -1762,18 +1760,18 @@ function resetUIForRole() {
     connectionStatus.textContent = 'Очакване на друг играч…';
 }
 
-// ---- Confirm name & connect ----
-mpConfirmNameBtn.addEventListener('click', () => {
+// ---- Inline onclick function ----
+function confirmNameAndConnect() {
     mpPlayerName = mpNameInput.value.trim() || ('Player-' + Date.now().toString(36).substring(0,4));
     if (mpPlayerName.length > 20) mpPlayerName = mpPlayerName.substring(0, 20);
     mpNameInput.style.display = 'none';
-    mpConfirmNameBtn.style.display = 'none';
+    document.getElementById('mpConfirmNameBtn').style.display = 'none';
     if (isHost) {
         mpPlayers = [{ id: 'host', name: mpPlayerName, emoji: '👑', isHost: true }];
         updatePlayerListUI();
     }
     connectSignaling();
-});
+}
 
 // ---- Populate theme browser ----
 function populateThemeBrowser() {
@@ -1815,9 +1813,7 @@ function populateThemeBrowser() {
 }
 
 function connectSignaling() {
-    // ALERT for joiner: this will show if the join flow starts
     if (!isHost) alert('Joiner connectSignaling is running – check console');
-
     signalingPollInterval = setInterval(pollSignaling, 500);
     createPeerConnection();
     if (isHost) {
@@ -1832,10 +1828,8 @@ function connectSignaling() {
         };
     }
 
-    // Permanent fix: ensure host always sees joiners
     if (isHost) signalingSince = 0;
 
-    // Joiner sends a JOIN announcement
     if (!isHost) {
         fetch(`https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&client=${signalingClientId}`, {
             method: 'POST',
@@ -1879,7 +1873,6 @@ async function pollSignaling() {
                         await mpPeerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
                     }
                 }
-                // Only update the "since" timestamp when we see a message from the other client.
                 signalingSince = Math.max(signalingSince, msg.timestamp);
             }
         }
