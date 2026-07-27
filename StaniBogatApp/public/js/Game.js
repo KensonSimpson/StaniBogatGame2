@@ -1678,38 +1678,104 @@ function stopUserThemeMusic() {
 // ============================================
 let activeUsersCounter = null;
 let activeUsersInterval = null;
+let heartbeatInterval = null;
+let clientId = null;
 
 function initActiveUsersCounter() {
-  // Create UI element
+  // Generate a unique client ID for this tab (persists in sessionStorage)
+  if (!clientId) {
+    clientId = sessionStorage.getItem('activeUserClientId');
+    if (!clientId) {
+      clientId = 'tab-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 5);
+      sessionStorage.setItem('activeUserClientId', clientId);
+    }
+  }
+
+  // Create counter UI element (only visible on start menu)
   const counterDiv = document.createElement('div');
   counterDiv.id = 'activeUsersCounter';
   counterDiv.style.cssText = `
     position: fixed;
-    top: 10px;
+    top: 15px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(0,0,0,0.7);
-    color: gold;
-    padding: 5px 15px;
-    border-radius: 20px;
-    border: 2px solid gold;
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    color: #000;
+    padding: 6px 20px;
+    border-radius: 30px;
+    border: 2px solid #fff;
     font-weight: bold;
     font-size: 16px;
     z-index: 5000;
     pointer-events: none;
     font-family: 'Tahoma', sans-serif;
-    text-shadow: 1px 1px 2px black;
+    box-shadow: 0 4px 15px rgba(255,215,0,0.6);
+    display: none; /* hidden by default */
     white-space: nowrap;
   `;
-  counterDiv.textContent = 'Брой играчи: ?';
+  counterDiv.innerHTML = '👥 <span id="userCountValue">?</span>';
   document.body.appendChild(counterDiv);
 
   activeUsersCounter = counterDiv;
+
+  // Start heartbeat (send every 5 seconds)
+  startHeartbeat();
+
+  // Start counter updates (every 1 second)
   updateActiveUsers();
-  // Update every 1 second
   activeUsersInterval = setInterval(updateActiveUsers, 1000);
+
+  // Show counter only on start menu
+  showCounterOnStartMenu();
 }
 
+function startHeartbeat() {
+  if (heartbeatInterval) clearInterval(heartbeatInterval);
+  // Send heartbeat immediately
+  sendHeartbeat();
+  // Then every 5 seconds
+  heartbeatInterval = setInterval(sendHeartbeat, 5000);
+}
+
+async function sendHeartbeat() {
+  try {
+    await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/heartbeat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientId: clientId })
+    });
+  } catch (e) {
+    // silently ignore
+  }
+}
+
+async function updateActiveUsers() {
+  try {
+    const resp = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/active-users');
+    const data = await resp.json();
+    if (data.count !== undefined && activeUsersCounter) {
+      document.getElementById('userCountValue').textContent = data.count;
+    }
+  } catch (e) {
+    console.warn('Failed to fetch active users count:', e);
+  }
+}
+
+function showCounterOnStartMenu() {
+  const startMenu = document.getElementById('startMenu');
+  const observer = new MutationObserver(() => {
+    if (startMenu.style.display === 'flex' || startMenu.style.display === '') {
+      activeUsersCounter.style.display = 'block';
+    } else {
+      activeUsersCounter.style.display = 'none';
+    }
+  });
+  observer.observe(startMenu, { attributes: true, attributeFilter: ['style'] });
+  // Initial check
+  if (startMenu.style.display === 'flex' || startMenu.style.display === '') {
+    activeUsersCounter.style.display = 'block';
+  }
+}
 async function updateActiveUsers() {
   try {
     const resp = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/active-users');
