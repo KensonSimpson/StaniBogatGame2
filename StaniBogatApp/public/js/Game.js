@@ -1674,7 +1674,7 @@ function stopUserThemeMusic() {
 }
 
 // ============================================
-// GLOBAL ACTIVE USERS COUNTER (corrected)
+// GLOBAL ACTIVE USERS COUNTER (fast expiry)
 // ============================================
 let activeUsersCounter = null;
 let activeUsersInterval = null;
@@ -1682,7 +1682,7 @@ let heartbeatInterval = null;
 let clientId = null;
 
 function initActiveUsersCounter() {
-  // Generate a unique client ID for this tab (persists in sessionStorage for the tab)
+  // Generate a unique client ID for this tab (persists in sessionStorage)
   if (!clientId) {
     clientId = sessionStorage.getItem('activeUserClientId');
     if (!clientId) {
@@ -1718,7 +1718,7 @@ function initActiveUsersCounter() {
 
   activeUsersCounter = counterDiv;
 
-  // Start heartbeat (send every 5 seconds)
+  // Start heartbeat (send every 1 second)
   startHeartbeat();
 
   // Start counter updates (every 1 second)
@@ -1738,8 +1738,8 @@ function startHeartbeat() {
   if (heartbeatInterval) clearInterval(heartbeatInterval);
   // Send heartbeat immediately
   sendHeartbeat();
-  // Then every 5 seconds
-  heartbeatInterval = setInterval(sendHeartbeat, 5000);
+  // Then every 1 second
+  heartbeatInterval = setInterval(sendHeartbeat, 1000);
 }
 
 async function sendHeartbeat() {
