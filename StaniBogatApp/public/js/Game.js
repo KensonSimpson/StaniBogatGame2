@@ -1858,6 +1858,8 @@ function handleJoinerJoin(clientId, name) {
     console.log(`👋 New player: ${name} (${clientId})`);
     mpPlayers.push({ id: clientId, name: name, isHost: false });
     updatePlayerListUI();
+    // Broadcast updated list to ALL existing players (including new one will get it when channel opens)
+    broadcastToAll({ type: 'PLAYER_LIST', players: mpPlayers });
     createPeerConnectionForClient(clientId);
 }
 
@@ -1954,9 +1956,11 @@ function setupDataChannel(clientId, channel) {
             });
             delete pendingCandidates[clientId];
         }
+        // Send current player list to this new client (if host)
         if (isHost) {
             channel.send(JSON.stringify({ type: 'PLAYER_LIST', players: mpPlayers }));
         }
+        // Send own join notification
         channel.send(JSON.stringify({ type: 'PLAYER_JOIN', id: mpClientId, name: mpPlayerName, isHost: isHost }));
     };
 
@@ -1968,6 +1972,7 @@ function setupDataChannel(clientId, channel) {
                     mpPlayers.push({ id: msg.id, name: msg.name, isHost: msg.isHost || false });
                     updatePlayerListUI();
                     if (isHost) {
+                        // Broadcast updated list to all
                         broadcastToAll({ type: 'PLAYER_LIST', players: mpPlayers });
                     }
                 }
@@ -2033,6 +2038,67 @@ function updatePlayerListUI() {
     playerCountDisplay.textContent = `Играчи: ${mpPlayers.length} / ${MAX_PLAYERS}`;
 }
 
+// --- Populate theme browser with categories ---
+async function populateThemeBrowser() {
+    if (!themeBrowserInline) return;
+    themeBrowserInline.innerHTML = '';
+
+    // 1. Built-in themes (from QUESTIONS_DATA)
+    const builtInContainer = document.createElement('div');
+    builtInContainer.style.cssText = 'width:100%; margin-bottom:10px;';
+    const builtInLabel = document.createElement('div');
+    builtInLabel.textContent = '— Вградени теми —';
+    builtInLabel.style.cssText = 'color:gold; font-weight:bold; margin:5px 0; width:100%; text-align:center;';
+    builtInContainer.appendChild(builtInLabel);
+
+    for (const themeKey in QUESTIONS_DATA) {
+        const chip = document.createElement('div');
+        chip.className = 'theme-chip';
+        chip.textContent = themeKey;
+        chip.addEventListener('click', () => {
+            document.querySelectorAll('.theme-chip').forEach(c => c.style.borderColor = '');
+            chip.style.borderColor = 'lime';
+            selectedQuestions = QUESTIONS_DATA[themeKey]['bg'] || QUESTIONS_DATA[themeKey][Object.keys(QUESTIONS_DATA[themeKey])[0]];
+            startMpGameBtn.disabled = false;
+        });
+        builtInContainer.appendChild(chip);
+    }
+    themeBrowserInline.appendChild(builtInContainer);
+
+    // 2. Custom themes (from API)
+    const customContainer = document.createElement('div');
+    customContainer.style.cssText = 'width:100%;';
+    const customLabel = document.createElement('div');
+    customLabel.textContent = '— Потребителски теми —';
+    customLabel.style.cssText = 'color:gold; font-weight:bold; margin:5px 0; width:100%; text-align:center;';
+    customContainer.appendChild(customLabel);
+
+    try {
+        const response = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/themes');
+        const themes = await response.json();
+        themes.forEach(theme => {
+            const chip = document.createElement('div');
+            chip.className = 'theme-chip';
+            chip.textContent = theme.name + ' (ID:' + theme.id + ')';
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('.theme-chip').forEach(c => c.style.borderColor = '');
+                chip.style.borderColor = 'lime';
+                selectedQuestions = JSON.parse(theme.questionsData);
+                startMpGameBtn.disabled = false;
+            });
+            customContainer.appendChild(chip);
+        });
+    } catch (e) {
+        console.warn('Failed to load custom themes:', e);
+        const errMsg = document.createElement('div');
+        errMsg.textContent = 'Грешка при зареждане на потребителски теми.';
+        errMsg.style.cssText = 'color:#ff6b6b; font-size:12px;';
+        customContainer.appendChild(errMsg);
+    }
+    themeBrowserInline.appendChild(customContainer);
+}
+
+// --- Start button handler ---
 if (startMpGameBtn) {
     startMpGameBtn.addEventListener('click', () => {
         if (!isHost || mpGameStarted) return;
