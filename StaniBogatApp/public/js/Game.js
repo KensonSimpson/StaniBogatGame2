@@ -1698,19 +1698,19 @@ if (!roomScreen) {
     roomScreen.className = 'multiplayer-room-screen';
     roomScreen.innerHTML = `
         <div class="room-content">
-            <h2>Room</h2>
-            <p>Code: <span class="room-code" id="displayRoomCode">------</span></p>
-            <input type="text" id="mpNameInput" class="room-name-input" placeholder="Your name..." maxlength="20" autocomplete="off" />
-            <button id="mpConfirmNameBtn" class="start-room-btn" style="display:inline-block;">Confirm name</button>
-            <p class="player-count" id="playerCountDisplay">Players: 0 / ${MAX_PLAYERS}</p>
+            <h2>Стая</h2>
+            <p>Код: <span class="room-code" id="displayRoomCode">------</span></p>
+            <input type="text" id="mpNameInput" class="room-name-input" placeholder="Вашето име..." maxlength="20" autocomplete="off" />
+            <button id="mpConfirmNameBtn" class="start-room-btn" style="display:inline-block;" onclick="confirmNameAndConnect()">Потвърди името</button>
+            <p class="player-count" id="playerCountDisplay">Играчи: 0 / ${MAX_PLAYERS}</p>
             <div class="player-list" id="playerList"></div>
-            <p id="connectionStatus" style="color:#ccc; margin:10px 0; display:none;">Waiting for players...</p>
+            <p id="connectionStatus" style="color:#ccc; margin:10px 0; display:none;">Очакване на играчи...</p>
             <div id="themeBrowserArea" style="display:none;">
-                <p style="color:gold; margin-bottom:8px;">Choose a theme:</p>
+                <p style="color:gold; margin-bottom:8px;">Изберете тема:</p>
                 <div class="theme-browser-inline" id="themeBrowserInline"></div>
             </div>
-            <button id="startMpGameBtn" class="start-room-btn" disabled>Start</button>
-            <button id="leaveRoomBtn" class="leave-room-btn">Leave</button>
+            <button id="startMpGameBtn" class="start-room-btn" disabled>Старт</button>
+            <button id="leaveRoomBtn" class="leave-room-btn">Излез</button>
         </div>
     `;
     document.body.appendChild(roomScreen);
@@ -1728,7 +1728,7 @@ const startMpGameBtn = document.getElementById('startMpGameBtn');
 const leaveRoomBtn = document.getElementById('leaveRoomBtn');
 const connectionStatus = document.getElementById('connectionStatus');
 
-// Ако някой все още липсва, предупреждаваме (но вече би трябвало да са налице)
+// Дебъг предупреждение (на английски)
 if (!displayRoomCode || !mpNameInput || !mpConfirmNameBtn || !playerCountDisplay ||
     !playerListEl || !themeBrowserArea || !themeBrowserInline || !startMpGameBtn || !leaveRoomBtn || !connectionStatus) {
     console.warn('Some multiplayer elements are still missing. Check the IDs.');
@@ -1741,7 +1741,7 @@ function createMultiplayerRoom() {
     displayRoomCode.textContent = mpRoomCode;
     isHost = true;
     signalingSince = 0;
-    mpPlayers = [{ id: mpClientId, name: 'Host', isHost: true }];
+    mpPlayers = [{ id: mpClientId, name: 'Хост', isHost: true }];
     resetUIForRole();
     document.getElementById('multiplayerMenuScreen').style.display = 'none';
     roomScreen.style.display = 'flex';
@@ -1754,7 +1754,7 @@ function createMultiplayerRoom() {
     startMpGameBtn.disabled = true;
     themeBrowserArea.style.display = 'none';
     connectionStatus.style.display = 'block';
-    connectionStatus.textContent = 'Waiting for players...';
+    connectionStatus.textContent = 'Очакване на играчи...';
 }
 
 function joinMultiplayerRoom(code) {
@@ -1763,7 +1763,7 @@ function joinMultiplayerRoom(code) {
     displayRoomCode.textContent = mpRoomCode;
     isHost = false;
     signalingSince = 0;
-    mpPlayers = [{ id: mpClientId, name: 'Me', isHost: false }];
+    mpPlayers = [{ id: mpClientId, name: 'Аз', isHost: false }];
     resetUIForRole();
     document.getElementById('joinRoomScreen').style.display = 'none';
     roomScreen.style.display = 'flex';
@@ -1793,7 +1793,7 @@ function resetUIForRole() {
 }
 
 function confirmNameAndConnect() {
-    mpPlayerName = mpNameInput.value.trim() || 'Player-' + Date.now().toString(36).substring(0,4);
+    mpPlayerName = mpNameInput.value.trim() || 'Играч-' + Date.now().toString(36).substring(0,4);
     if (mpPlayerName.length > 20) mpPlayerName = mpPlayerName.substring(0, 20);
     mpNameInput.style.display = 'none';
     mpConfirmNameBtn.style.display = 'none';
@@ -2006,18 +2006,18 @@ function updatePlayerListUI() {
         card.innerHTML = `${p.isHost ? '👑' : ''} ${p.name}`;
         return card.outerHTML;
     }).join('');
-    playerCountDisplay.textContent = `Players: ${mpPlayers.length} / ${MAX_PLAYERS}`;
+    playerCountDisplay.textContent = `Играчи: ${mpPlayers.length} / ${MAX_PLAYERS}`;
 }
 
 if (startMpGameBtn) {
     startMpGameBtn.addEventListener('click', () => {
         if (!isHost || mpGameStarted) return;
         if (Object.keys(mpDataChannels).length === 0) {
-            alert('No connected players.');
+            alert('Няма свързани играчи.');
             return;
         }
         if (!selectedQuestions || selectedQuestions.length === 0) {
-            alert('Please select a theme.');
+            alert('Моля, изберете тема.');
             return;
         }
         broadcastToAll({ type: 'START_GAME', questions: selectedQuestions });
@@ -2117,7 +2117,7 @@ function finishMpQuestion() {
 }
 
 function showMpRoundResult(data) {
-    alert(`Correct answer: ${String.fromCharCode(65 + data.correct)})\n` +
+    alert(`Верен отговор: ${String.fromCharCode(65 + data.correct)})\n` +
           data.results.map(r => `${r.name}: ${r.correct ? '✅' : '❌'}`).join('\n'));
 }
 
@@ -2125,7 +2125,7 @@ function endMpGame(scores) {
     clearTimeout(mpQuestionTimer);
     const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
     const winner = sorted[0];
-    alert(`🏆 Winner: ${mpPlayers.find(p => p.id === winner[0])?.name || 'Unknown'} with ${winner[1]} points!`);
+    alert(`🏆 Победител: ${mpPlayers.find(p => p.id === winner[0])?.name || 'Unknown'} с ${winner[1]} точки!`);
     mpGameStarted = false;
     roomScreen.style.display = 'none';
     document.getElementById('gameContainer').style.display = 'none';
@@ -2170,11 +2170,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const wheelBtn = document.getElementById('spinningWheelButton');
     if (!startBtn || !tutorialBtn || !wheelBtn) {
         console.error("CRITICAL: Buttons missing!");
-        alert("Error: Buttons not found.");
+        alert("Грешка: Бутоните не са намерени.");
         return;
     }
     try {
-        if (typeof TRANSLATIONS === 'undefined') alert("Error: Translations not loaded.");
+        if (typeof TRANSLATIONS === 'undefined') alert("Грешка: Преводите не са заредени.");
         else initLanguageSystem();
         initializeSettings();
         initializeStartMenu();
@@ -2316,6 +2316,6 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log("=== GAME INITIALIZATION COMPLETE ===");
     } catch (err) {
         console.error("CRITICAL ERROR during initialization:", err);
-        alert("An error occurred during initialization.");
+        alert("Възникна грешка при инициализация.");
     }
 });
