@@ -1674,6 +1674,52 @@ function stopUserThemeMusic() {
 }
 
 // ============================================
+// GLOBAL ACTIVE USERS COUNTER
+// ============================================
+let activeUsersCounter = null;
+let activeUsersInterval = null;
+
+function initActiveUsersCounter() {
+    // Create UI element
+    const counterDiv = document.createElement('div');
+    counterDiv.id = 'activeUsersCounter';
+    counterDiv.style.cssText = `
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: rgba(0,0,0,0.7);
+        color: gold;
+        padding: 5px 15px;
+        border-radius: 20px;
+        border: 2px solid gold;
+        font-weight: bold;
+        font-size: 16px;
+        z-index: 5000;
+        pointer-events: none;
+        font-family: 'Tahoma', sans-serif;
+        text-shadow: 1px 1px 2px black;
+    `;
+    counterDiv.textContent = 'Брой играчи: ?';
+    document.body.appendChild(counterDiv);
+
+    activeUsersCounter = counterDiv;
+    updateActiveUsers();
+    activeUsersInterval = setInterval(updateActiveUsers, 5000);
+}
+
+async function updateActiveUsers() {
+    try {
+        const resp = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/active-users');
+        const data = await resp.json();
+        if (data.count !== undefined && activeUsersCounter) {
+            activeUsersCounter.textContent = `Брой играчи: ${data.count}`;
+        }
+    } catch (e) {
+        console.warn('Failed to fetch active users count:', e);
+    }
+}
+
+// ============================================
 // MULTIPLAYER MODULE (STAR TOPOLOGY – 30 PLAYERS)
 // ============================================
 const MAX_PLAYERS = 30;
@@ -2492,6 +2538,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             });
         }
+
+        // Initialize global active users counter
+        initActiveUsersCounter();
 
         console.log("=== GAME INITIALIZATION COMPLETE ===");
     } catch (err) {
