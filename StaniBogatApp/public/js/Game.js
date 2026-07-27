@@ -1895,6 +1895,7 @@ async function handleRemoteSDP(clientId, sdp) {
             console.warn('Received SDP from client without a connection (host ignores)');
             return;
         } else {
+            // Joiner: receives offer from host, creates peer connection
             const newPc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
             mpPeerConnections[clientId] = newPc;
             newPc.ondatachannel = (event) => {
@@ -1913,19 +1914,28 @@ async function handleRemoteSDP(clientId, sdp) {
             sendSignalingMessage({ type: 'SIGNAL', targetClient: clientId, sdp: newPc.localDescription });
         }
     } else {
-        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+        // Host: receives answer from joiner
+        if (pc.signalingState === 'have-local-offer') {
+            await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+        } else {
+            console.warn(`SDP ignored, signaling state: ${pc.signalingState}`);
+        }
     }
 }
 
+// Store ICE candidates if remote description not set yet
+const pendingCandidates = {};
+
 async function handleRemoteICE(clientId, candidate) {
     const pc = mpPeerConnections[clientId];
-    if (pc) {
-        // Ensure remote description is set before adding ICE candidate
-        if (pc.remoteDescription) {
-            await pc.addIceCandidate(new RTCIceCandidate(candidate));
-        } else {
-            console.warn('Remote description not set yet, candidate ignored');
-        }
+    if (!pc) return;
+    if (pc.remoteDescription) {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    } else {
+        // Queue candidate for later
+        if (!pendingCandidates[clientId]) pendingCandidates[clientId] = [];
+        pendingCandidates[clientId].push(candidate);
+        console.log(`Queued ICE candidate for ${clientId}`);
     }
 }
 
@@ -1934,6 +1944,16 @@ function setupDataChannel(clientId, channel) {
         console.log(`🟢 Data channel opened for ${clientId}`);
         mpDataChannelOpen = true;
         connectionStatus.style.display = 'none';
+        // Process any queued ICE candidates now that remote description is set
+        if (pendingCandidates[clientId]) {
+            const pc = mpPeerConnections[clientId];
+            pendingCandidates[clientId].forEach(c => {
+                if (pc.remoteDescription) {
+                    pc.addIceCandidate(new RTCIceCandidate(c)).catch(e => console.error('Failed to add queued ICE:', e));
+                }
+            });
+            delete pendingCandidates[clientId];
+        }
         if (isHost) {
             channel.send(JSON.stringify({ type: 'PLAYER_LIST', players: mpPlayers }));
         }
