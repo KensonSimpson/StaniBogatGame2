@@ -321,6 +321,9 @@ function playSound(soundId) {
             sound.currentTime = 0;
             sound.volume = settings.sfxVolume;
             sound.play().catch(e => console.log("Audio play failed:", e));
+            console.log(`Playing sound: ${soundId}`);
+        } else {
+            console.warn(`Sound element #${soundId} not found`);
         }
     } catch (error) {
         console.log("Sound error:", error);
@@ -1976,6 +1979,7 @@ function setupDataChannel(clientId, channel) {
 
     channel.onmessage = (event) => {
         const msg = JSON.parse(event.data);
+        console.log('📩 Received message:', msg);
         switch (msg.type) {
             case 'PLAYER_JOIN':
                 if (!mpPlayers.find(p => p.id === msg.id)) {
@@ -1990,6 +1994,7 @@ function setupDataChannel(clientId, channel) {
             case 'PLAYER_LIST':
                 mpPlayers = msg.players;
                 updatePlayerListUI();
+                console.log('Player list updated for', mpClientId, mpPlayers);
                 break;
             case 'START_GAME':
                 beginMpGame(msg.questions, msg.themeKey);
@@ -2047,6 +2052,7 @@ function updatePlayerListUI() {
         return card.outerHTML;
     }).join('');
     playerCountDisplay.textContent = `Играчи: ${mpPlayers.length} / ${MAX_PLAYERS}`;
+    console.log('UI Updated, players:', mpPlayers);
 }
 
 function updateStartButtonState() {
@@ -2054,6 +2060,7 @@ function updateStartButtonState() {
     const hasOtherPlayers = mpPlayers.length > 1;
     const hasTheme = selectedQuestions && selectedQuestions.length > 0;
     startMpGameBtn.disabled = !(hasOtherPlayers && hasTheme);
+    console.log('Start button disabled:', startMpGameBtn.disabled);
 }
 
 async function populateThemeBrowser() {
@@ -2243,11 +2250,9 @@ function finishMpQuestion() {
     sendNextMpQuestion();
 }
 
-// Нова функция за визуализация на резултатите (звуци + анимации)
 function processMpRoundResult(data) {
     const btns = document.querySelectorAll('.answer-btn');
     const correctBtn = btns[data.correct];
-    // Намираме кой бутон е избран от текущия играч
     const playerResult = data.results.find(r => r.name === mpPlayerName);
     let selectedIdx = playerResult ? playerResult.answer : -1;
     const selectedBtn = (selectedIdx >= 0 && selectedIdx < btns.length) ? btns[selectedIdx] : null;
@@ -2275,7 +2280,6 @@ function processMpRoundResult(data) {
             playSound(sound);
             setTimeout(() => {
                 alert(`✅ Правилен отговор!`);
-                // въпросът вече е увеличен от хоста, така че просто продължаваме
             }, 3000);
         } else {
             if (correctBtn) {
