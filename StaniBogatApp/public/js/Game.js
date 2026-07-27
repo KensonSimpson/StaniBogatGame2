@@ -1728,7 +1728,6 @@ const startMpGameBtn = document.getElementById('startMpGameBtn');
 const leaveRoomBtn = document.getElementById('leaveRoomBtn');
 const connectionStatus = document.getElementById('connectionStatus');
 
-// Дебъг предупреждение (на английски)
 if (!displayRoomCode || !mpNameInput || !mpConfirmNameBtn || !playerCountDisplay ||
     !playerListEl || !themeBrowserArea || !themeBrowserInline || !startMpGameBtn || !leaveRoomBtn || !connectionStatus) {
     console.warn('Some multiplayer elements are still missing. Check the IDs.');
@@ -1921,7 +1920,12 @@ async function handleRemoteSDP(clientId, sdp) {
 async function handleRemoteICE(clientId, candidate) {
     const pc = mpPeerConnections[clientId];
     if (pc) {
-        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        // Ensure remote description is set before adding ICE candidate
+        if (pc.remoteDescription) {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } else {
+            console.warn('Remote description not set yet, candidate ignored');
+        }
     }
 }
 
