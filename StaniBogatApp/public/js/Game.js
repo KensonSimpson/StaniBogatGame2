@@ -316,15 +316,17 @@ function performTransition(actionCallback, afterCallback) {
 
 function playSound(soundId) {
     try {
-        const sound = document.getElementById(soundId);
-        if (sound) {
-            sound.currentTime = 0;
+        let sound = document.getElementById(soundId);
+        if (!sound) {
+            // Fallback: create new Audio element
+            sound = new Audio('/sounds/' + soundId + '.mp3');
             sound.volume = settings.sfxVolume;
-            sound.play().catch(e => console.log("Audio play failed:", e));
-            console.log(`Playing sound: ${soundId}`);
         } else {
-            console.warn(`Sound element #${soundId} not found`);
+            sound.volume = settings.sfxVolume;
         }
+        sound.currentTime = 0;
+        sound.play().catch(e => console.log("Audio play failed:", e));
+        console.log(`Playing sound: ${soundId}`);
     } catch (error) {
         console.log("Sound error:", error);
     }
@@ -1971,15 +1973,18 @@ function setupDataChannel(clientId, channel) {
             delete pendingCandidates[clientId];
         }
         if (isHost) {
+            // Send current player list to the newly connected client
             channel.send(JSON.stringify({ type: 'PLAYER_LIST', players: mpPlayers }));
+            console.log(`Host sent PLAYER_LIST to ${clientId}:`, mpPlayers);
         }
+        // Send own join notification
         channel.send(JSON.stringify({ type: 'PLAYER_JOIN', id: mpClientId, name: mpPlayerName, isHost: isHost }));
         updateStartButtonState();
     };
 
     channel.onmessage = (event) => {
         const msg = JSON.parse(event.data);
-        console.log('📩 Received message:', msg);
+        console.log(`📩 Received message from ${clientId}:`, msg);
         switch (msg.type) {
             case 'PLAYER_JOIN':
                 if (!mpPlayers.find(p => p.id === msg.id)) {
@@ -1994,7 +1999,7 @@ function setupDataChannel(clientId, channel) {
             case 'PLAYER_LIST':
                 mpPlayers = msg.players;
                 updatePlayerListUI();
-                console.log('Player list updated for', mpClientId, mpPlayers);
+                console.log(`Player list updated for ${mpClientId}:`, mpPlayers);
                 break;
             case 'START_GAME':
                 beginMpGame(msg.questions, msg.themeKey);
@@ -2041,6 +2046,7 @@ function broadcastToAll(message) {
             mpDataChannels[id].send(JSON.stringify(message));
         }
     }
+    console.log(`Broadcasted to all open channels:`, message);
 }
 
 function updatePlayerListUI() {
