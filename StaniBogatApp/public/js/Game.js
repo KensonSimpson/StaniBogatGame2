@@ -1803,6 +1803,11 @@ function confirmNameAndConnect() {
         mpPlayers.push({ id: mpClientId, name: mpPlayerName, isHost: isHost });
     }
     updatePlayerListUI();
+    // If host, show theme browser immediately
+    if (isHost) {
+        themeBrowserArea.style.display = 'block';
+        populateThemeBrowser();
+    }
     if (!isHost) {
         sendSignalingMessage({ type: 'JOIN', clientId: mpClientId, name: mpPlayerName });
     }
@@ -1917,9 +1922,11 @@ async function handleRemoteSDP(clientId, sdp) {
         }
     } else {
         // Host: receives answer from joiner
+        // Only set if signaling state is 'have-local-offer'
         if (pc.signalingState === 'have-local-offer') {
             await pc.setRemoteDescription(new RTCSessionDescription(sdp));
         } else {
+            // Ignore if state is stable or something else
             console.warn(`SDP ignored, signaling state: ${pc.signalingState}`);
         }
     }
