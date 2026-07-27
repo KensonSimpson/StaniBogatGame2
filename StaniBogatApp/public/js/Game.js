@@ -1689,6 +1689,7 @@ let mpQuestionTimer = null;
 let selectedQuestions = null;
 let signalingPollInterval = null;
 let signalingSince = 0;
+let processedJoinClients = new Set(); // to avoid duplicate JOIN handling
 
 // --- Създаване на екрана на стаята (динамично) ---
 let roomScreen = document.getElementById('mpRoomScreen');
@@ -1740,6 +1741,7 @@ function createMultiplayerRoom() {
     displayRoomCode.textContent = mpRoomCode;
     isHost = true;
     signalingSince = 0;
+    processedJoinClients.clear();
     mpPlayers = [{ id: mpClientId, name: 'Хост', isHost: true }];
     resetUIForRole();
     document.getElementById('multiplayerMenuScreen').style.display = 'none';
@@ -1762,6 +1764,7 @@ function joinMultiplayerRoom(code) {
     displayRoomCode.textContent = mpRoomCode;
     isHost = false;
     signalingSince = 0;
+    processedJoinClients.clear();
     mpPlayers = [{ id: mpClientId, name: 'Аз', isHost: false }];
     resetUIForRole();
     document.getElementById('joinRoomScreen').style.display = 'none';
@@ -1803,10 +1806,14 @@ function confirmNameAndConnect() {
         mpPlayers.push({ id: mpClientId, name: mpPlayerName, isHost: isHost });
     }
     updatePlayerListUI();
-    // If host, show theme browser immediately
+    // If host, show theme browser and start button (disabled)
     if (isHost) {
         themeBrowserArea.style.display = 'block';
         populateThemeBrowser();
+        startMpGameBtn.style.display = 'inline-block';
+        startMpGameBtn.disabled = true;
+        // Enable start button if there is at least one other player and a theme selected
+        updateStartButtonState();
     }
     if (!isHost) {
         sendSignalingMessage({ type: 'JOIN', clientId: mpClientId, name: mpPlayerName });
@@ -1830,7 +1837,13 @@ async function pollSignaling() {
             const data = JSON.parse(msg.message);
             if (data.type === 'JOIN') {
                 if (isHost) {
-                    handleJoinerJoin(data.clientId, data.name);
+                    // Only handle each joiner once
+                    if (!processedJoinClients.has(data.clientId)) {
+                        processedJoinClients.add(data.clientId);
+                        handleJoinerJoin(data.clientId, data.name);
+                    } else {
+                        console.warn('Duplicate JOIN from', data.clientId, 'ignored');
+                    }
                 }
             } else if (data.type === 'SIGNAL') {
                 const targetClient = data.targetClient || msg.client;
@@ -1865,6 +1878,8 @@ function handleJoinerJoin(clientId, name) {
     updatePlayerListUI();
     // Broadcast updated list to ALL existing players (including new one will get it when channel opens)
     broadcastToAll({ type: 'PLAYER_LIST', players: mpPlayers });
+    // Enable start button if a theme is selected
+    updateStartButtonState();
     createPeerConnectionForClient(clientId);
 }
 
@@ -1969,6 +1984,8 @@ function setupDataChannel(clientId, channel) {
         }
         // Send own join notification
         channel.send(JSON.stringify({ type: 'PLAYER_JOIN', id: mpClientId, name: mpPlayerName, isHost: isHost }));
+        // Update start button state (now we have at least one player)
+        updateStartButtonState();
     };
 
     channel.onmessage = (event) => {
@@ -1981,6 +1998,7 @@ function setupDataChannel(clientId, channel) {
                     if (isHost) {
                         // Broadcast updated list to all
                         broadcastToAll({ type: 'PLAYER_LIST', players: mpPlayers });
+                        updateStartButtonState();
                     }
                 }
                 break;
@@ -2016,6 +2034,7 @@ function setupDataChannel(clientId, channel) {
             updatePlayerListUI();
             if (isHost) {
                 broadcastToAll({ type: 'PLAYER_LIST', players: mpPlayers });
+                updateStartButtonState();
             }
         }
         delete mpDataChannels[clientId];
@@ -2045,6 +2064,15 @@ function updatePlayerListUI() {
     playerCountDisplay.textContent = `Играчи: ${mpPlayers.length} / ${MAX_PLAYERS}`;
 }
 
+// --- Helper to update start button state ---
+function updateStartButtonState() {
+    if (!isHost || !startMpGameBtn) return;
+    // Enable only if a theme is selected AND there is at least one other player (mpPlayers.length > 1)
+    const hasOtherPlayers = mpPlayers.length > 1;
+    const hasTheme = selectedQuestions && selectedQuestions.length > 0;
+    startMpGameBtn.disabled = !(hasOtherPlayers && hasTheme);
+}
+
 // --- Populate theme browser with categories ---
 async function populateThemeBrowser() {
     if (!themeBrowserInline) return;
@@ -2066,7 +2094,7 @@ async function populateThemeBrowser() {
             document.querySelectorAll('.theme-chip').forEach(c => c.style.borderColor = '');
             chip.style.borderColor = 'lime';
             selectedQuestions = QUESTIONS_DATA[themeKey]['bg'] || QUESTIONS_DATA[themeKey][Object.keys(QUESTIONS_DATA[themeKey])[0]];
-            startMpGameBtn.disabled = false;
+            updateStartButtonState();
         });
         builtInContainer.appendChild(chip);
     }
@@ -2091,7 +2119,7 @@ async function populateThemeBrowser() {
                 document.querySelectorAll('.theme-chip').forEach(c => c.style.borderColor = '');
                 chip.style.borderColor = 'lime';
                 selectedQuestions = JSON.parse(theme.questionsData);
-                startMpGameBtn.disabled = false;
+                updateStartButtonState();
             });
             customContainer.appendChild(chip);
         });
