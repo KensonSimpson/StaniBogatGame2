@@ -1687,9 +1687,10 @@ let mpPeerConnections = {};
 let mpDataChannelOpen = false;
 let mpQuestionTimer = null;
 let selectedQuestions = null;
+let selectedThemeKey = null;
 let signalingPollInterval = null;
 let signalingSince = 0;
-let processedJoinClients = new Set(); // to avoid duplicate JOIN handling
+let processedJoinClients = new Set();
 
 // --- Създаване на екрана на стаята (динамично) ---
 let roomScreen = document.getElementById('mpRoomScreen');
@@ -1806,13 +1807,11 @@ function confirmNameAndConnect() {
         mpPlayers.push({ id: mpClientId, name: mpPlayerName, isHost: isHost });
     }
     updatePlayerListUI();
-    // If host, show theme browser and start button (disabled)
     if (isHost) {
         themeBrowserArea.style.display = 'block';
         populateThemeBrowser();
         startMpGameBtn.style.display = 'inline-block';
         startMpGameBtn.disabled = true;
-        // Enable start button if there is at least one other player and a theme selected
         updateStartButtonState();
     }
     if (!isHost) {
@@ -1837,7 +1836,6 @@ async function pollSignaling() {
             const data = JSON.parse(msg.message);
             if (data.type === 'JOIN') {
                 if (isHost) {
-                    // Only handle each joiner once
                     if (!processedJoinClients.has(data.clientId)) {
                         processedJoinClients.add(data.clientId);
                         handleJoinerJoin(data.clientId, data.name);
@@ -1876,9 +1874,7 @@ function handleJoinerJoin(clientId, name) {
     console.log(`👋 New player: ${name} (${clientId})`);
     mpPlayers.push({ id: clientId, name: name, isHost: false });
     updatePlayerListUI();
-    // Broadcast updated list to ALL existing players (including new one will get it when channel opens)
     broadcastToAll({ type: 'PLAYER_LIST', players: mpPlayers });
-    // Enable start button if a theme is selected
     updateStartButtonState();
     createPeerConnectionForClient(clientId);
 }
@@ -1917,7 +1913,6 @@ async function handleRemoteSDP(clientId, sdp) {
             console.warn('Received SDP from client without a connection (host ignores)');
             return;
         } else {
-            // Joiner: receives offer from host, creates peer connection
             const newPc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
             mpPeerConnections[clientId] = newPc;
             newPc.ondatachannel = (event) => {
@@ -1936,18 +1931,14 @@ async function handleRemoteSDP(clientId, sdp) {
             sendSignalingMessage({ type: 'SIGNAL', targetClient: clientId, sdp: newPc.localDescription });
         }
     } else {
-        // Host: receives answer from joiner
-        // Only set if signaling state is 'have-local-offer'
         if (pc.signalingState === 'have-local-offer') {
             await pc.setRemoteDescription(new RTCSessionDescription(sdp));
         } else {
-            // Ignore if state is stable or something else
             console.warn(`SDP ignored, signaling state: ${pc.signalingState}`);
         }
     }
 }
 
-// Store ICE candidates if remote description not set yet
 const pendingCandidates = {};
 
 async function handleRemoteICE(clientId, candidate) {
@@ -1956,7 +1947,6 @@ async function handleRemoteICE(clientId, candidate) {
     if (pc.remoteDescription) {
         await pc.addIceCandidate(new RTCIceCandidate(candidate));
     } else {
-        // Queue candidate for later
         if (!pendingCandidates[clientId]) pendingCandidates[clientId] = [];
         pendingCandidates[clientId].push(candidate);
         console.log(`Queued ICE candidate for ${clientId}`);
@@ -1968,7 +1958,6 @@ function setupDataChannel(clientId, channel) {
         console.log(`🟢 Data channel opened for ${clientId}`);
         mpDataChannelOpen = true;
         connectionStatus.style.display = 'none';
-        // Process any queued ICE candidates now that remote description is set
         if (pendingCandidates[clientId]) {
             const pc = mpPeerConnections[clientId];
             pendingCandidates[clientId].forEach(c => {
@@ -1978,13 +1967,10 @@ function setupDataChannel(clientId, channel) {
             });
             delete pendingCandidates[clientId];
         }
-        // Send current player list to this new client (if host)
         if (isHost) {
             channel.send(JSON.stringify({ type: 'PLAYER_LIST', players: mpPlayers }));
         }
-        // Send own join notification
         channel.send(JSON.stringify({ type: 'PLAYER_JOIN', id: mpClientId, name: mpPlayerName, isHost: isHost }));
-        // Update start button state (now we have at least one player)
         updateStartButtonState();
     };
 
@@ -1996,7 +1982,6 @@ function setupDataChannel(clientId, channel) {
                     mpPlayers.push({ id: msg.id, name: msg.name, isHost: msg.isHost || false });
                     updatePlayerListUI();
                     if (isHost) {
-                        // Broadcast updated list to all
                         broadcastToAll({ type: 'PLAYER_LIST', players: mpPlayers });
                         updateStartButtonState();
                     }
@@ -2007,7 +1992,7 @@ function setupDataChannel(clientId, channel) {
                 updatePlayerListUI();
                 break;
             case 'START_GAME':
-                beginMpGame(msg.questions);
+                beginMpGame(msg.questions, msg.themeKey);
                 break;
             case 'QUESTION':
                 displayMpQuestion(msg);
@@ -2018,7 +2003,7 @@ function setupDataChannel(clientId, channel) {
                 }
                 break;
             case 'ROUND_RESULT':
-                showMpRoundResult(msg);
+                processMpRoundResult(msg);
                 break;
             case 'GAME_ENDED':
                 endMpGame(msg.scores);
@@ -2064,21 +2049,17 @@ function updatePlayerListUI() {
     playerCountDisplay.textContent = `Играчи: ${mpPlayers.length} / ${MAX_PLAYERS}`;
 }
 
-// --- Helper to update start button state ---
 function updateStartButtonState() {
     if (!isHost || !startMpGameBtn) return;
-    // Enable only if a theme is selected AND there is at least one other player (mpPlayers.length > 1)
     const hasOtherPlayers = mpPlayers.length > 1;
     const hasTheme = selectedQuestions && selectedQuestions.length > 0;
     startMpGameBtn.disabled = !(hasOtherPlayers && hasTheme);
 }
 
-// --- Populate theme browser with categories ---
 async function populateThemeBrowser() {
     if (!themeBrowserInline) return;
     themeBrowserInline.innerHTML = '';
 
-    // 1. Built-in themes (from QUESTIONS_DATA)
     const builtInContainer = document.createElement('div');
     builtInContainer.style.cssText = 'width:100%; margin-bottom:10px;';
     const builtInLabel = document.createElement('div');
@@ -2093,6 +2074,7 @@ async function populateThemeBrowser() {
         chip.addEventListener('click', () => {
             document.querySelectorAll('.theme-chip').forEach(c => c.style.borderColor = '');
             chip.style.borderColor = 'lime';
+            selectedThemeKey = themeKey;
             selectedQuestions = QUESTIONS_DATA[themeKey]['bg'] || QUESTIONS_DATA[themeKey][Object.keys(QUESTIONS_DATA[themeKey])[0]];
             updateStartButtonState();
         });
@@ -2100,7 +2082,6 @@ async function populateThemeBrowser() {
     }
     themeBrowserInline.appendChild(builtInContainer);
 
-    // 2. Custom themes (from API)
     const customContainer = document.createElement('div');
     customContainer.style.cssText = 'width:100%;';
     const customLabel = document.createElement('div');
@@ -2118,6 +2099,7 @@ async function populateThemeBrowser() {
             chip.addEventListener('click', () => {
                 document.querySelectorAll('.theme-chip').forEach(c => c.style.borderColor = '');
                 chip.style.borderColor = 'lime';
+                selectedThemeKey = 'custom_' + theme.id;
                 selectedQuestions = JSON.parse(theme.questionsData);
                 updateStartButtonState();
             });
@@ -2133,7 +2115,6 @@ async function populateThemeBrowser() {
     themeBrowserInline.appendChild(customContainer);
 }
 
-// --- Start button handler ---
 if (startMpGameBtn) {
     startMpGameBtn.addEventListener('click', () => {
         if (!isHost || mpGameStarted) return;
@@ -2145,12 +2126,12 @@ if (startMpGameBtn) {
             alert('Моля, изберете тема.');
             return;
         }
-        broadcastToAll({ type: 'START_GAME', questions: selectedQuestions });
-        beginMpGame(selectedQuestions);
+        broadcastToAll({ type: 'START_GAME', questions: selectedQuestions, themeKey: selectedThemeKey });
+        beginMpGame(selectedQuestions, selectedThemeKey);
     });
 }
 
-function beginMpGame(questions) {
+function beginMpGame(questions, themeKey) {
     mpGameStarted = true;
     mpQuestions = questions;
     mpCurrentQuestion = 0;
@@ -2159,16 +2140,37 @@ function beginMpGame(questions) {
     themeBrowserArea.style.display = 'none';
     startMpGameBtn.style.display = 'none';
     roomScreen.style.display = 'none';
+
     const gameContainer = document.getElementById('gameContainer');
     gameContainer.style.display = 'block';
     gameContainer.style.opacity = '1';
-    currentTheme = null;
+    currentTheme = themeKey;
     currentThemeQuestions = questions;
     currentTotalQuestions = questions.length;
     const moneyTree = document.getElementById('moneyTree');
-    if (moneyTree) { moneyTree.style.display = 'block'; generateMoneyTree(''); }
+    if (moneyTree) { moneyTree.style.display = 'block'; generateMoneyTree(themeKey); }
+    const moneyTreeToggle = document.getElementById('moneyTreeToggle');
+    if (moneyTreeToggle) { moneyTreeToggle.style.display = 'block'; moneyTreeToggle.style.opacity = '1'; }
     const levelIndicator = document.querySelector('.level-indicator');
     if (levelIndicator) levelIndicator.style.display = 'block';
+    const backButtonContainer = document.querySelector('.game-back-button-container');
+    if (backButtonContainer) backButtonContainer.style.display = 'block';
+    const gameBack = document.getElementById('gameBackButton');
+    if (gameBack) gameBack.style.display = 'block';
+    
+    gameContainer.classList.remove('narrow');
+    moneyTreeToggle.innerHTML = '💰';
+    gameState.isMoneyTreeVisible = false;
+    setTimeout(() => updateGameContainerResponsiveness(), 100);
+    stopRetroMusic();
+    setThemeBackground(themeKey);
+    playThemeMusic(themeKey);
+    if (themeKey === 'Minecraft') {
+        applyMinecraftTheme();
+    } else {
+        removeMinecraftTheme();
+    }
+
     updateLevelIndicator();
     const answersContainer = document.getElementById('answersContainer');
     if (answersContainer) answersContainer.innerHTML = '';
@@ -2241,9 +2243,52 @@ function finishMpQuestion() {
     sendNextMpQuestion();
 }
 
-function showMpRoundResult(data) {
-    alert(`Верен отговор: ${String.fromCharCode(65 + data.correct)})\n` +
-          data.results.map(r => `${r.name}: ${r.correct ? '✅' : '❌'}`).join('\n'));
+// Нова функция за визуализация на резултатите (звуци + анимации)
+function processMpRoundResult(data) {
+    const btns = document.querySelectorAll('.answer-btn');
+    const correctBtn = btns[data.correct];
+    // Намираме кой бутон е избран от текущия играч
+    const playerResult = data.results.find(r => r.name === mpPlayerName);
+    let selectedIdx = playerResult ? playerResult.answer : -1;
+    const selectedBtn = (selectedIdx >= 0 && selectedIdx < btns.length) ? btns[selectedIdx] : null;
+
+    btns.forEach(b => b.disabled = true);
+
+    if (selectedBtn) {
+        selectedBtn.style.background = 'linear-gradient(135deg, #ffed4e, #ffd700)';
+        selectedBtn.style.color = '#000066';
+        selectedBtn.style.border = '3px solid #cc9900';
+    }
+
+    clearTimeout(gameState.wrongAnswerTimeout);
+    gameState.wrongAnswerTimeout = setTimeout(() => {
+        if (playerResult && playerResult.correct) {
+            if (correctBtn) {
+                correctBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
+                correctBtn.style.color = '#000066';
+                correctBtn.style.border = '3px solid #00aa00';
+            }
+            let sound = 'correctAnswerSound';
+            if (gameState.currentQuestion < 5) sound = 'correctAnswerSound';
+            else if (gameState.currentQuestion < 10) sound = 'correctAnswer2';
+            else sound = 'correctAnswer3';
+            playSound(sound);
+            setTimeout(() => {
+                alert(`✅ Правилен отговор!`);
+                // въпросът вече е увеличен от хоста, така че просто продължаваме
+            }, 3000);
+        } else {
+            if (correctBtn) {
+                correctBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
+                correctBtn.style.color = '#000066';
+                correctBtn.style.border = '3px solid #00aa00';
+            }
+            playSound('wrongAnswerSound');
+            setTimeout(() => {
+                alert(`❌ Грешен отговор!`);
+            }, 3000);
+        }
+    }, 2500);
 }
 
 function endMpGame(scores) {
