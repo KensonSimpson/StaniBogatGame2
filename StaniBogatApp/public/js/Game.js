@@ -1672,7 +1672,7 @@ function stopUserThemeMusic() {
 // MULTIPLAYER MODULE (STAR TOPOLOGY – 30 PLAYERS)
 // ============================================
 const MAX_PLAYERS = 30;
-let mpClientId = '';                     // уникален ID на текущия клиент
+let mpClientId = '';
 let mpRoomCode = '';
 let mpPlayerName = '';
 let isHost = false;
@@ -1680,18 +1680,43 @@ let mpGameStarted = false;
 let mpCurrentQuestion = 0;
 let mpQuestions = [];
 let mpScores = {};
-let mpPlayers = [];                      // масив от {id, name, isHost}
+let mpPlayers = [];
 let mpAnswers = {};
-let mpDataChannels = {};                 // {clientId: RTCDataChannel}
-let mpPeerConnections = {};              // {clientId: RTCPeerConnection}
-let mpDataChannelOpen = false;           // дали поне един канал е отворен (за UI)
+let mpDataChannels = {};
+let mpPeerConnections = {};
+let mpDataChannelOpen = false;
 let mpQuestionTimer = null;
 let selectedQuestions = null;
 let signalingPollInterval = null;
 let signalingSince = 0;
 
-// --- Получаваме референции към DOM елементите (трябва да съществуват в index.html) ---
-const roomScreen = document.getElementById('mpRoomScreen');
+// --- Създаване на екрана на стаята (динамично) ---
+let roomScreen = document.getElementById('mpRoomScreen');
+if (!roomScreen) {
+    roomScreen = document.createElement('div');
+    roomScreen.id = 'mpRoomScreen';
+    roomScreen.className = 'multiplayer-room-screen';
+    roomScreen.innerHTML = `
+        <div class="room-content">
+            <h2>Room</h2>
+            <p>Code: <span class="room-code" id="displayRoomCode">------</span></p>
+            <input type="text" id="mpNameInput" class="room-name-input" placeholder="Your name..." maxlength="20" autocomplete="off" />
+            <button id="mpConfirmNameBtn" class="start-room-btn" style="display:inline-block;">Confirm name</button>
+            <p class="player-count" id="playerCountDisplay">Players: 0 / ${MAX_PLAYERS}</p>
+            <div class="player-list" id="playerList"></div>
+            <p id="connectionStatus" style="color:#ccc; margin:10px 0; display:none;">Waiting for players...</p>
+            <div id="themeBrowserArea" style="display:none;">
+                <p style="color:gold; margin-bottom:8px;">Choose a theme:</p>
+                <div class="theme-browser-inline" id="themeBrowserInline"></div>
+            </div>
+            <button id="startMpGameBtn" class="start-room-btn" disabled>Start</button>
+            <button id="leaveRoomBtn" class="leave-room-btn">Leave</button>
+        </div>
+    `;
+    document.body.appendChild(roomScreen);
+}
+
+// --- Получаваме референции към елементите след създаването ---
 const displayRoomCode = document.getElementById('displayRoomCode');
 const mpNameInput = document.getElementById('mpNameInput');
 const mpConfirmNameBtn = document.getElementById('mpConfirmNameBtn');
@@ -1703,20 +1728,20 @@ const startMpGameBtn = document.getElementById('startMpGameBtn');
 const leaveRoomBtn = document.getElementById('leaveRoomBtn');
 const connectionStatus = document.getElementById('connectionStatus');
 
-// Ако някой от елементите липсва, ще изведем предупреждение в конзолата (на английски)
-if (!roomScreen || !displayRoomCode || !mpNameInput || !mpConfirmNameBtn || !playerCountDisplay ||
+// Ако някой все още липсва, предупреждаваме (но вече би трябвало да са налице)
+if (!displayRoomCode || !mpNameInput || !mpConfirmNameBtn || !playerCountDisplay ||
     !playerListEl || !themeBrowserArea || !themeBrowserInline || !startMpGameBtn || !leaveRoomBtn || !connectionStatus) {
-    console.warn('Some multiplayer elements are missing in the HTML. Check the IDs.');
+    console.warn('Some multiplayer elements are still missing. Check the IDs.');
 }
 
-// --- Функции за създаване и присъединяване ---
+// --- Функции ---
 function createMultiplayerRoom() {
     mpClientId = 'host-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2,5);
     mpRoomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     displayRoomCode.textContent = mpRoomCode;
     isHost = true;
     signalingSince = 0;
-    mpPlayers = [{ id: mpClientId, name: 'Хост', isHost: true }]; // временно, ще се актуализира
+    mpPlayers = [{ id: mpClientId, name: 'Host', isHost: true }];
     resetUIForRole();
     document.getElementById('multiplayerMenuScreen').style.display = 'none';
     roomScreen.style.display = 'flex';
@@ -1738,7 +1763,7 @@ function joinMultiplayerRoom(code) {
     displayRoomCode.textContent = mpRoomCode;
     isHost = false;
     signalingSince = 0;
-    mpPlayers = [{ id: mpClientId, name: 'Аз', isHost: false }];
+    mpPlayers = [{ id: mpClientId, name: 'Me', isHost: false }];
     resetUIForRole();
     document.getElementById('joinRoomScreen').style.display = 'none';
     roomScreen.style.display = 'flex';
@@ -1767,7 +1792,6 @@ function resetUIForRole() {
     mpNameInput.value = '';
 }
 
-// --- Потвърждаване на име и свързване ---
 function confirmNameAndConnect() {
     mpPlayerName = mpNameInput.value.trim() || 'Player-' + Date.now().toString(36).substring(0,4);
     if (mpPlayerName.length > 20) mpPlayerName = mpPlayerName.substring(0, 20);
@@ -1785,7 +1809,6 @@ function confirmNameAndConnect() {
     }
 }
 
-// --- Сигнализиране (полинг) ---
 function startSignalingPolling() {
     if (signalingPollInterval) clearInterval(signalingPollInterval);
     signalingSince = 0;
@@ -1831,7 +1854,6 @@ async function sendSignalingMessage(message) {
     }
 }
 
-// --- Обработка на нов играч (само за хост) ---
 function handleJoinerJoin(clientId, name) {
     if (mpPlayers.find(p => p.id === clientId)) return;
     console.log(`👋 New player: ${name} (${clientId})`);
@@ -1840,7 +1862,6 @@ function handleJoinerJoin(clientId, name) {
     createPeerConnectionForClient(clientId);
 }
 
-// --- Създаване на peer connection за даден клиент (само за хост) ---
 function createPeerConnectionForClient(clientId) {
     if (mpPeerConnections[clientId]) {
         console.warn('Already have a connection for this client');
@@ -1868,7 +1889,6 @@ function createPeerConnectionForClient(clientId) {
     });
 }
 
-// --- Обработка на входящ SDP (за всички клиенти) ---
 async function handleRemoteSDP(clientId, sdp) {
     const pc = mpPeerConnections[clientId];
     if (!pc) {
@@ -1876,7 +1896,6 @@ async function handleRemoteSDP(clientId, sdp) {
             console.warn('Received SDP from client without a connection (host ignores)');
             return;
         } else {
-            // Ние сме joiner, получаваме offer от хоста
             const newPc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
             mpPeerConnections[clientId] = newPc;
             newPc.ondatachannel = (event) => {
@@ -1899,7 +1918,6 @@ async function handleRemoteSDP(clientId, sdp) {
     }
 }
 
-// --- Обработка на ICE кандидат ---
 async function handleRemoteICE(clientId, candidate) {
     const pc = mpPeerConnections[clientId];
     if (pc) {
@@ -1907,7 +1925,6 @@ async function handleRemoteICE(clientId, candidate) {
     }
 }
 
-// --- Настройка на data channel ---
 function setupDataChannel(clientId, channel) {
     channel.onopen = () => {
         console.log(`🟢 Data channel opened for ${clientId}`);
@@ -1973,7 +1990,6 @@ function setupDataChannel(clientId, channel) {
     };
 }
 
-// --- Разпращане на съобщение до всички играчи (само за хост) ---
 function broadcastToAll(message) {
     for (let id in mpDataChannels) {
         if (mpDataChannels[id].readyState === 'open') {
@@ -1982,7 +1998,6 @@ function broadcastToAll(message) {
     }
 }
 
-// --- Обновяване на UI списъка с играчи ---
 function updatePlayerListUI() {
     if (!playerListEl) return;
     playerListEl.innerHTML = mpPlayers.map(p => {
@@ -1994,7 +2009,6 @@ function updatePlayerListUI() {
     playerCountDisplay.textContent = `Players: ${mpPlayers.length} / ${MAX_PLAYERS}`;
 }
 
-// --- Старт на играта (хост) ---
 if (startMpGameBtn) {
     startMpGameBtn.addEventListener('click', () => {
         if (!isHost || mpGameStarted) return;
@@ -2011,7 +2025,6 @@ if (startMpGameBtn) {
     });
 }
 
-// --- Логика на играта ---
 function beginMpGame(questions) {
     mpGameStarted = true;
     mpQuestions = questions;
@@ -2128,7 +2141,6 @@ function endMpGame(scores) {
     mpDataChannelOpen = false;
 }
 
-// --- Бутон за излизане ---
 if (leaveRoomBtn) {
     leaveRoomBtn.addEventListener('click', () => {
         for (let id in mpPeerConnections) {
