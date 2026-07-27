@@ -1674,7 +1674,7 @@ function stopUserThemeMusic() {
 }
 
 // ============================================
-// GLOBAL ACTIVE USERS COUNTER
+// GLOBAL ACTIVE USERS COUNTER (corrected)
 // ============================================
 let activeUsersCounter = null;
 let activeUsersInterval = null;
@@ -1682,7 +1682,7 @@ let heartbeatInterval = null;
 let clientId = null;
 
 function initActiveUsersCounter() {
-  // Generate a unique client ID for this tab (persists in sessionStorage)
+  // Generate a unique client ID for this tab (persists in sessionStorage for the tab)
   if (!clientId) {
     clientId = sessionStorage.getItem('activeUserClientId');
     if (!clientId) {
@@ -1727,6 +1727,11 @@ function initActiveUsersCounter() {
 
   // Show counter only on start menu
   showCounterOnStartMenu();
+
+  // Send a final heartbeat when the tab is closed (best effort)
+  window.addEventListener('beforeunload', () => {
+    sendHeartbeat(); // try one last time
+  });
 }
 
 function startHeartbeat() {
@@ -1775,29 +1780,6 @@ function showCounterOnStartMenu() {
   if (startMenu.style.display === 'flex' || startMenu.style.display === '') {
     activeUsersCounter.style.display = 'block';
   }
-}
-async function updateActiveUsers() {
-  try {
-    const resp = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/active-users');
-    const data = await resp.json();
-    if (data.count !== undefined && activeUsersCounter) {
-      activeUsersCounter.textContent = `Брой играчи: ${data.count}`;
-    }
-  } catch (e) {
-    console.warn('Failed to fetch active users count:', e);
-  }
-}
-
-async function updateActiveUsers() {
-    try {
-        const resp = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/active-users');
-        const data = await resp.json();
-        if (data.count !== undefined && activeUsersCounter) {
-            activeUsersCounter.textContent = `Брой играчи: ${data.count}`;
-        }
-    } catch (e) {
-        console.warn('Failed to fetch active users count:', e);
-    }
 }
 
 // ============================================
