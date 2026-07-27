@@ -1690,11 +1690,22 @@ let selectedQuestions = null;
 let signalingPollInterval = null;
 let signalingSince = 0;
 
-// --- Екран на стаята (вече съществува, но ще го преизползваме) ---
+// --- Получаваме референции към DOM елементите (трябва да съществуват в index.html) ---
 const roomScreen = document.getElementById('mpRoomScreen');
-if (!roomScreen) {
-    // Ако липсва, създаваме го (но във вашия index.html вече го има)
-    // Този код няма да се изпълни, защото вече съществува.
+const displayRoomCode = document.getElementById('displayRoomCode');
+const mpNameInput = document.getElementById('mpNameInput');
+const playerCountDisplay = document.getElementById('playerCountDisplay');
+const playerListEl = document.getElementById('playerList');
+const themeBrowserArea = document.getElementById('themeBrowserArea');
+const themeBrowserInline = document.getElementById('themeBrowserInline');
+const startMpGameBtn = document.getElementById('startMpGameBtn');
+const leaveRoomBtn = document.getElementById('leaveRoomBtn');
+const connectionStatus = document.getElementById('connectionStatus');
+
+// Ако някой от елементите липсва, ще изведем грешка в конзолата
+if (!roomScreen || !displayRoomCode || !mpNameInput || !playerCountDisplay || !playerListEl ||
+    !themeBrowserArea || !themeBrowserInline || !startMpGameBtn || !leaveRoomBtn || !connectionStatus) {
+    console.error('❌ Някои от мултиплеър елементите не са намерени в HTML!');
 }
 
 // --- Функции за създаване и присъединяване ---
@@ -1708,15 +1719,11 @@ function createMultiplayerRoom() {
     resetUIForRole();
     document.getElementById('multiplayerMenuScreen').style.display = 'none';
     roomScreen.style.display = 'flex';
-    // Започваме да слушаме за сигнали
     startSignalingPolling();
-    // Първоначално пускаме празен списък
     updatePlayerListUI();
-    // Показваме полето за име на хоста
     mpNameInput.style.display = 'inline-block';
     document.getElementById('mpConfirmNameBtn').style.display = 'inline-block';
     mpNameInput.value = '';
-    // Скриваме бутона за старт, докато не избере тема и няма играчи
     startMpGameBtn.style.display = 'none';
     startMpGameBtn.disabled = true;
     themeBrowserArea.style.display = 'none';
@@ -1739,14 +1746,11 @@ function joinMultiplayerRoom(code) {
     mpNameInput.style.display = 'inline-block';
     document.getElementById('mpConfirmNameBtn').style.display = 'inline-block';
     mpNameInput.value = '';
-    // Изпращаме JOIN съобщение до хоста веднага след като потребителят потвърди името
-    // (виж confirmNameAndConnect)
 }
 
 function resetUIForRole() {
     mpGameStarted = false;
     mpDataChannelOpen = false;
-    // Затваряме всички стари връзки
     for (let id in mpPeerConnections) {
         mpPeerConnections[id].close();
     }
@@ -1760,7 +1764,6 @@ function resetUIForRole() {
     mpNameInput.style.display = 'inline-block';
     document.getElementById('mpConfirmNameBtn').style.display = 'inline-block';
     mpNameInput.value = '';
-    // Но не изчистваме mpPlayers, за да запазим себе си
 }
 
 // --- Потвърждаване на име и свързване ---
@@ -1769,7 +1772,6 @@ function confirmNameAndConnect() {
     if (mpPlayerName.length > 20) mpPlayerName = mpPlayerName.substring(0, 20);
     mpNameInput.style.display = 'none';
     document.getElementById('mpConfirmNameBtn').style.display = 'none';
-    // Актуализираме собствения запис в mpPlayers
     const me = mpPlayers.find(p => p.id === mpClientId);
     if (me) {
         me.name = mpPlayerName;
@@ -1778,11 +1780,8 @@ function confirmNameAndConnect() {
     }
     updatePlayerListUI();
     if (!isHost) {
-        // Изпращаме JOIN на хоста
         sendSignalingMessage({ type: 'JOIN', clientId: mpClientId, name: mpPlayerName });
     }
-    // Ако сме хост, започваме да слушаме за JOIN от другите
-    // (вече сме в startSignalingPolling)
 }
 
 // --- Сигнализиране (полинг) ---
@@ -1799,16 +1798,14 @@ async function pollSignaling() {
         const messages = await resp.json();
 
         for (const msg of messages) {
-            if (msg.client === mpClientId) continue; // игнорираме собствени съобщения
+            if (msg.client === mpClientId) continue;
             const data = JSON.parse(msg.message);
             if (data.type === 'JOIN') {
                 if (isHost) {
-                    // Нов играч иска да се присъедини
                     handleJoinerJoin(data.clientId, data.name);
                 }
             } else if (data.type === 'SIGNAL') {
-                // Съобщение за WebRTC (SDP или ICE)
-                const targetClient = data.targetClient || msg.client; // за обратна съвместимост
+                const targetClient = data.targetClient || msg.client;
                 if (data.sdp) {
                     await handleRemoteSDP(targetClient, data.sdp);
                 } else if (data.candidate) {
@@ -1823,7 +1820,6 @@ async function pollSignaling() {
 }
 
 async function sendSignalingMessage(message) {
-    // Изпращаме съобщение до сървъра (ще бъде получено от всички останали клиенти в същата стая)
     try {
         await fetch(
             `https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&client=${mpClientId}`,
@@ -1836,18 +1832,11 @@ async function sendSignalingMessage(message) {
 
 // --- Обработка на нов играч (само за хост) ---
 function handleJoinerJoin(clientId, name) {
-    if (mpPlayers.find(p => p.id === clientId)) {
-        // Вече съществува – игнорираме
-        return;
-    }
+    if (mpPlayers.find(p => p.id === clientId)) return;
     console.log(`👋 Нов играч: ${name} (${clientId})`);
-    // Добавяме в списъка
     mpPlayers.push({ id: clientId, name: name, isHost: false });
     updatePlayerListUI();
-    // Създаваме peer connection за този клиент
     createPeerConnectionForClient(clientId);
-    // Изпращаме обновения списък на всички (след като каналът се отвори)
-    // Но все още нямаме канал, затова изчакваме onopen
 }
 
 // --- Създаване на peer connection за даден клиент (само за хост) ---
@@ -1859,23 +1848,19 @@ function createPeerConnectionForClient(clientId) {
     const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
     mpPeerConnections[clientId] = pc;
 
-    // Създаваме data channel
     const channel = pc.createDataChannel('game');
     setupDataChannel(clientId, channel);
     mpDataChannels[clientId] = channel;
 
     pc.onicecandidate = (event) => {
         if (event.candidate) {
-            // Изпращаме ICE кандидата на този клиент
             sendSignalingMessage({ type: 'SIGNAL', targetClient: clientId, candidate: event.candidate });
         }
     };
 
-    // Създаваме offer
     pc.createOffer().then(offer => {
         return pc.setLocalDescription(offer);
     }).then(() => {
-        // Изпращаме offer-а на клиента
         sendSignalingMessage({ type: 'SIGNAL', targetClient: clientId, sdp: pc.localDescription });
     }).catch(err => {
         console.error('Грешка при създаване на offer:', err);
@@ -1884,20 +1869,15 @@ function createPeerConnectionForClient(clientId) {
 
 // --- Обработка на входящ SDP (за всички клиенти) ---
 async function handleRemoteSDP(clientId, sdp) {
-    // Ако сме хост, получаваме answer от joiner-а
-    // Ако сме joiner, получаваме offer от хоста
     const pc = mpPeerConnections[clientId];
     if (!pc) {
-        // Ако нямаме peer connection за този клиент (само joiner-ът ще получи offer от хоста)
-        // Тогава създаваме нов peer connection (joiner-ът)
         if (isHost) {
             console.warn('Получен SDP от клиент без връзка (хостът игнорира)');
             return;
         } else {
             // Ние сме joiner, получаваме offer от хоста
             const newPc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-            mpPeerConnections[clientId] = newPc; // clientId = hostId
-            // Очакваме data channel (host ще създаде)
+            mpPeerConnections[clientId] = newPc;
             newPc.ondatachannel = (event) => {
                 const channel = event.channel;
                 setupDataChannel(clientId, channel);
@@ -1911,11 +1891,9 @@ async function handleRemoteSDP(clientId, sdp) {
             await newPc.setRemoteDescription(new RTCSessionDescription(sdp));
             const answer = await newPc.createAnswer();
             await newPc.setLocalDescription(answer);
-            // Изпращаме answer обратно на хоста
             sendSignalingMessage({ type: 'SIGNAL', targetClient: clientId, sdp: newPc.localDescription });
         }
     } else {
-        // Вече имаме pc, прилагаме SDP (за хост получава answer)
         await pc.setRemoteDescription(new RTCSessionDescription(sdp));
     }
 }
@@ -1934,13 +1912,9 @@ function setupDataChannel(clientId, channel) {
         console.log(`🟢 Data channel opened for ${clientId}`);
         mpDataChannelOpen = true;
         connectionStatus.style.display = 'none';
-        // Ако сме хост, изпращаме текущия списък с играчи
         if (isHost) {
             channel.send(JSON.stringify({ type: 'PLAYER_LIST', players: mpPlayers }));
         }
-        // Изпращаме собственото си присъединяване (ако още не сме)
-        // Но вече сме го направили чрез JOIN, затова не е нужно
-        // Може да изпратим потвърждение
         channel.send(JSON.stringify({ type: 'PLAYER_JOIN', id: mpClientId, name: mpPlayerName, isHost: isHost }));
     };
 
@@ -1948,18 +1922,15 @@ function setupDataChannel(clientId, channel) {
         const msg = JSON.parse(event.data);
         switch (msg.type) {
             case 'PLAYER_JOIN':
-                // Друг играч се присъединява (след като каналът е отворен)
                 if (!mpPlayers.find(p => p.id === msg.id)) {
                     mpPlayers.push({ id: msg.id, name: msg.name, isHost: msg.isHost || false });
                     updatePlayerListUI();
-                    // Хостът разпраща обновения списък на всички
                     if (isHost) {
                         broadcastToAll({ type: 'PLAYER_LIST', players: mpPlayers });
                     }
                 }
                 break;
             case 'PLAYER_LIST':
-                // Получаваме актуален списък от хоста
                 mpPlayers = msg.players;
                 updatePlayerListUI();
                 break;
@@ -1985,7 +1956,6 @@ function setupDataChannel(clientId, channel) {
 
     channel.onclose = () => {
         console.log(`🔴 Data channel closed for ${clientId}`);
-        // Премахваме играча
         const idx = mpPlayers.findIndex(p => p.id === clientId);
         if (idx !== -1) {
             mpPlayers.splice(idx, 1);
@@ -2034,7 +2004,6 @@ startMpGameBtn.addEventListener('click', () => {
         alert('Моля, изберете тема.');
         return;
     }
-    // Изпращаме START_GAME на всички
     broadcastToAll({ type: 'START_GAME', questions: selectedQuestions });
     beginMpGame(selectedQuestions);
 });
@@ -2049,7 +2018,6 @@ function beginMpGame(questions) {
     themeBrowserArea.style.display = 'none';
     startMpGameBtn.style.display = 'none';
     roomScreen.style.display = 'none';
-    // Показваме игровия екран
     const gameContainer = document.getElementById('gameContainer');
     gameContainer.style.display = 'block';
     gameContainer.style.opacity = '1';
@@ -2063,27 +2031,21 @@ function beginMpGame(questions) {
     updateLevelIndicator();
     const answersContainer = document.getElementById('answersContainer');
     if (answersContainer) answersContainer.innerHTML = '';
-    // Изпращаме първия въпрос
     sendNextMpQuestion();
 }
 
 function sendNextMpQuestion() {
     clearTimeout(mpQuestionTimer);
     if (mpCurrentQuestion >= mpQuestions.length) {
-        // Край на играта
         broadcastToAll({ type: 'GAME_ENDED', scores: mpScores });
         endMpGame(mpScores);
         return;
     }
     const q = mpQuestions[mpCurrentQuestion];
-    // Изпращаме въпроса на всички
     broadcastToAll({ type: 'QUESTION', question: q.question, answers: q.answers, correct: q.correct, timeLimit: 15 });
     mpAnswers = {};
-    // Показваме въпроса и на хоста (локално)
     displayMpQuestion({ question: q.question, answers: q.answers });
-    // Таймер за въпроса
     mpQuestionTimer = setTimeout(() => {
-        // Ако не всички отговориха, продължаваме
         mpCurrentQuestion++;
         sendNextMpQuestion();
     }, 15000);
@@ -2098,11 +2060,9 @@ function displayMpQuestion(data) {
         btn.className = 'answer-btn';
         btn.textContent = `${String.fromCharCode(65 + idx)}) ${ans}`;
         btn.onclick = () => {
-            // Изпращаме отговора на хоста (ако сме хост – обработваме локално)
             if (isHost) {
                 handleMpAnswer(mpClientId, idx);
             } else {
-                // Изпращаме на хоста
                 broadcastToAll({ type: 'ANSWER', playerId: mpClientId, answerIndex: idx });
             }
             btn.disabled = true;
@@ -2114,7 +2074,6 @@ function displayMpQuestion(data) {
 function handleMpAnswer(playerId, answerIndex) {
     if (!isHost) return;
     mpAnswers[playerId] = answerIndex;
-    // Ако всички играчи са отговорили, приключваме въпроса
     const answeredPlayers = Object.keys(mpAnswers).filter(id => mpPlayers.find(p => p.id === id));
     if (answeredPlayers.length >= mpPlayers.length) {
         finishMpQuestion();
@@ -2136,7 +2095,6 @@ function finishMpQuestion() {
             if (player) mpScores[player.id] = (mpScores[player.id] || 0) + 1;
         }
     });
-    // Изпращаме резултатите на всички
     broadcastToAll({ type: 'ROUND_RESULT', correct, results, scores: mpScores });
     mpCurrentQuestion++;
     sendNextMpQuestion();
@@ -2156,7 +2114,6 @@ function endMpGame(scores) {
     roomScreen.style.display = 'none';
     document.getElementById('gameContainer').style.display = 'none';
     document.getElementById('multiplayerMenuScreen').style.display = 'flex';
-    // Затваряме всички връзки
     for (let id in mpPeerConnections) {
         mpPeerConnections[id].close();
     }
