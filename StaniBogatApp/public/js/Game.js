@@ -314,21 +314,27 @@ function performTransition(actionCallback, afterCallback) {
     }, 500);
 }
 
+// ============================================
+// FIXED SOUND FUNCTION
+// ============================================
 function playSound(soundId) {
+    console.log(`Attempting to play sound: ${soundId}`);
     try {
         let sound = document.getElementById(soundId);
         if (!sound) {
-            // Fallback: create new Audio element
-            sound = new Audio('/sounds/' + soundId + '.mp3');
-            sound.volume = settings.sfxVolume;
-        } else {
-            sound.volume = settings.sfxVolume;
+            console.warn(`Sound element #${soundId} not found, creating fallback Audio`);
+            sound = new Audio(`/sounds/${soundId}.mp3`);
         }
+        sound.volume = settings.sfxVolume || 1.0;
         sound.currentTime = 0;
-        sound.play().catch(e => console.log("Audio play failed:", e));
-        console.log(`Playing sound: ${soundId}`);
-    } catch (error) {
-        console.log("Sound error:", error);
+        const playPromise = sound.play();
+        if (playPromise) {
+            playPromise.catch(e => {
+                console.error(`Failed to play sound ${soundId}:`, e);
+            });
+        }
+    } catch (e) {
+        console.error(`Error playing sound ${soundId}:`, e);
     }
 }
 
@@ -1674,7 +1680,7 @@ function stopUserThemeMusic() {
 }
 
 // ============================================
-// GLOBAL ACTIVE USERS COUNTER (fast expiry)
+// GLOBAL ACTIVE USERS COUNTER (3-second expiry)
 // ============================================
 let activeUsersCounter = null;
 let activeUsersInterval = null;
@@ -1682,7 +1688,6 @@ let heartbeatInterval = null;
 let clientId = null;
 
 function initActiveUsersCounter() {
-  // Generate a unique client ID for this tab (persists in sessionStorage)
   if (!clientId) {
     clientId = sessionStorage.getItem('activeUserClientId');
     if (!clientId) {
@@ -1691,7 +1696,6 @@ function initActiveUsersCounter() {
     }
   }
 
-  // Create counter UI element (only visible on start menu)
   const counterDiv = document.createElement('div');
   counterDiv.id = 'activeUsersCounter';
   counterDiv.style.cssText = `
@@ -1710,7 +1714,7 @@ function initActiveUsersCounter() {
     pointer-events: none;
     font-family: 'Tahoma', sans-serif;
     box-shadow: 0 4px 15px rgba(255,215,0,0.6);
-    display: none; /* hidden by default */
+    display: none;
     white-space: nowrap;
   `;
   counterDiv.innerHTML = '👥 <span id="userCountValue">?</span>';
@@ -1718,27 +1722,20 @@ function initActiveUsersCounter() {
 
   activeUsersCounter = counterDiv;
 
-  // Start heartbeat (send every 1 second)
   startHeartbeat();
-
-  // Start counter updates (every 1 second)
   updateActiveUsers();
   activeUsersInterval = setInterval(updateActiveUsers, 1000);
 
-  // Show counter only on start menu
   showCounterOnStartMenu();
 
-  // Send a final heartbeat when the tab is closed (best effort)
   window.addEventListener('beforeunload', () => {
-    sendHeartbeat(); // try one last time
+    sendHeartbeat();
   });
 }
 
 function startHeartbeat() {
   if (heartbeatInterval) clearInterval(heartbeatInterval);
-  // Send heartbeat immediately
   sendHeartbeat();
-  // Then every 1 second
   heartbeatInterval = setInterval(sendHeartbeat, 1000);
 }
 
@@ -1749,9 +1746,7 @@ async function sendHeartbeat() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ clientId: clientId })
     });
-  } catch (e) {
-    // silently ignore
-  }
+  } catch (e) { /* ignore */ }
 }
 
 async function updateActiveUsers() {
@@ -1776,7 +1771,6 @@ function showCounterOnStartMenu() {
     }
   });
   observer.observe(startMenu, { attributes: true, attributeFilter: ['style'] });
-  // Initial check
   if (startMenu.style.display === 'flex' || startMenu.style.display === '') {
     activeUsersCounter.style.display = 'block';
   }
@@ -1806,7 +1800,6 @@ let signalingPollInterval = null;
 let signalingSince = 0;
 let processedJoinClients = new Set();
 
-// --- Създаване на екрана на стаята (динамично) ---
 let roomScreen = document.getElementById('mpRoomScreen');
 if (!roomScreen) {
     roomScreen = document.createElement('div');
@@ -1832,7 +1825,6 @@ if (!roomScreen) {
     document.body.appendChild(roomScreen);
 }
 
-// --- Получаваме референции към елементите след създаването ---
 const displayRoomCode = document.getElementById('displayRoomCode');
 const mpNameInput = document.getElementById('mpNameInput');
 const mpConfirmNameBtn = document.getElementById('mpConfirmNameBtn');
@@ -1844,12 +1836,13 @@ const startMpGameBtn = document.getElementById('startMpGameBtn');
 const leaveRoomBtn = document.getElementById('leaveRoomBtn');
 const connectionStatus = document.getElementById('connectionStatus');
 
+console.log('Player list element:', playerListEl);
+
 if (!displayRoomCode || !mpNameInput || !mpConfirmNameBtn || !playerCountDisplay ||
     !playerListEl || !themeBrowserArea || !themeBrowserInline || !startMpGameBtn || !leaveRoomBtn || !connectionStatus) {
     console.warn('Some multiplayer elements are still missing. Check the IDs.');
 }
 
-// --- Функции ---
 function createMultiplayerRoom() {
     mpClientId = 'host-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2,5);
     mpRoomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -2082,11 +2075,9 @@ function setupDataChannel(clientId, channel) {
             delete pendingCandidates[clientId];
         }
         if (isHost) {
-            // Send current player list to the newly connected client
             channel.send(JSON.stringify({ type: 'PLAYER_LIST', players: mpPlayers }));
             console.log(`Host sent PLAYER_LIST to ${clientId}:`, mpPlayers);
         }
-        // Send own join notification
         channel.send(JSON.stringify({ type: 'PLAYER_JOIN', id: mpClientId, name: mpPlayerName, isHost: isHost }));
         updateStartButtonState();
     };
