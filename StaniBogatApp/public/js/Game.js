@@ -315,7 +315,7 @@ function performTransition(actionCallback, afterCallback) {
 }
 
 // ============================================
-// FIXED SOUND FUNCTION
+// FIXED SOUND FUNCTION WITH PRELOAD
 // ============================================
 function playSound(soundId) {
     console.log(`Attempting to play sound: ${soundId}`);
@@ -1680,7 +1680,7 @@ function stopUserThemeMusic() {
 }
 
 // ============================================
-// GLOBAL ACTIVE USERS COUNTER (3-second expiry)
+// GLOBAL ACTIVE USERS COUNTER (3-second expiry, only on start menu)
 // ============================================
 let activeUsersCounter = null;
 let activeUsersInterval = null;
