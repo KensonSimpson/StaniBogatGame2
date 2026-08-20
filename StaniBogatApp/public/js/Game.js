@@ -314,9 +314,6 @@ function performTransition(actionCallback, afterCallback) {
     }, 500);
 }
 
-// ============================================
-// FIXED SOUND FUNCTION WITH PRELOAD
-// ============================================
 function playSound(soundId) {
     console.log(`Attempting to play sound: ${soundId}`);
     try {
@@ -2026,6 +2023,7 @@ async function handleRemoteSDP(clientId, sdp) {
                 const channel = event.channel;
                 setupDataChannel(clientId, channel);
                 mpDataChannels[clientId] = channel;
+                console.log(`👂 Joiner: ondatachannel fired for ${clientId}`);
             };
             newPc.onicecandidate = (event) => {
                 if (event.candidate) {
@@ -2061,6 +2059,7 @@ async function handleRemoteICE(clientId, candidate) {
 }
 
 function setupDataChannel(clientId, channel) {
+    console.log(`Setting up data channel for ${clientId}`);
     channel.onopen = () => {
         console.log(`🟢 Data channel opened for ${clientId}`);
         mpDataChannelOpen = true;
