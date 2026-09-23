@@ -1733,7 +1733,7 @@ function initActiveUsersCounter() {
 function startHeartbeat() {
   if (heartbeatInterval) clearInterval(heartbeatInterval);
   sendHeartbeat();
-  heartbeatInterval = setInterval(sendHeartbeat, 1000);
+  heartbeatInterval = setInterval(sendHeartbeat, 15000);
 }
 
 async function sendHeartbeat() {
