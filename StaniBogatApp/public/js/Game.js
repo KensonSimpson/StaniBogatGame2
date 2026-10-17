@@ -1677,7 +1677,7 @@ function stopUserThemeMusic() {
 }
 
 // ============================================
-// GLOBAL ACTIVE USERS COUNTER (3-second expiry, only on start menu)
+// GLOBAL ACTIVE USERS COUNTER
 // ============================================
 let activeUsersCounter = null;
 let activeUsersInterval = null;
@@ -1685,6 +1685,7 @@ let heartbeatInterval = null;
 let clientId = null;
 
 function initActiveUsersCounter() {
+  // Generate a unique ID for this specific tab
   if (!clientId) {
     clientId = sessionStorage.getItem('activeUserClientId');
     if (!clientId) {
@@ -1693,13 +1694,13 @@ function initActiveUsersCounter() {
     }
   }
 
+  // Create counter UI element (Always visible)
   const counterDiv = document.createElement('div');
   counterDiv.id = 'activeUsersCounter';
   counterDiv.style.cssText = `
     position: fixed;
     top: 15px;
-    left: 50%;
-    transform: translateX(-50%);
+    right: 25px;
     background: linear-gradient(135deg, #ffd700, #ff8c00);
     color: #000;
     padding: 6px 20px;
@@ -1711,29 +1712,19 @@ function initActiveUsersCounter() {
     pointer-events: none;
     font-family: 'Tahoma', sans-serif;
     box-shadow: 0 4px 15px rgba(255,215,0,0.6);
-    display: none;
     white-space: nowrap;
   `;
   counterDiv.innerHTML = '👥 <span id="userCountValue">?</span>';
   document.body.appendChild(counterDiv);
-
   activeUsersCounter = counterDiv;
 
-  startHeartbeat();
-  updateActiveUsers();
-  activeUsersInterval = setInterval(updateActiveUsers, 1000);
-
-  showCounterOnStartMenu();
-
-  window.addEventListener('beforeunload', () => {
-    sendHeartbeat();
-  });
-}
-
-function startHeartbeat() {
-  if (heartbeatInterval) clearInterval(heartbeatInterval);
+  // 1. Send heartbeat every 15 seconds
   sendHeartbeat();
   heartbeatInterval = setInterval(sendHeartbeat, 15000);
+
+  // 2. Fetch the count every 10 seconds
+  updateActiveUsers();
+  activeUsersInterval = setInterval(updateActiveUsers, 10000);
 }
 
 async function sendHeartbeat() {
