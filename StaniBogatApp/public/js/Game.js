@@ -1677,7 +1677,7 @@ function stopUserThemeMusic() {
 }
 
 // ============================================
-// GLOBAL ACTIVE USERS COUNTER
+// GLOBAL ACTIVE USERS COUNTER (Counts everywhere, shows only on Start Menu)
 // ============================================
 let activeUsersCounter = null;
 let activeUsersInterval = null;
@@ -1694,13 +1694,14 @@ function initActiveUsersCounter() {
     }
   }
 
-  // Create counter UI element (Always visible)
+  // Create counter UI element (Hidden by default)
   const counterDiv = document.createElement('div');
   counterDiv.id = 'activeUsersCounter';
   counterDiv.style.cssText = `
     position: fixed;
     top: 15px;
-    right: 25px;
+    left: 50%;
+    transform: translateX(-50%);
     background: linear-gradient(135deg, #ffd700, #ff8c00);
     color: #000;
     padding: 6px 20px;
@@ -1712,19 +1713,23 @@ function initActiveUsersCounter() {
     pointer-events: none;
     font-family: 'Tahoma', sans-serif;
     box-shadow: 0 4px 15px rgba(255,215,0,0.6);
+    display: none; 
     white-space: nowrap;
   `;
   counterDiv.innerHTML = '👥 <span id="userCountValue">?</span>';
   document.body.appendChild(counterDiv);
   activeUsersCounter = counterDiv;
 
-  // 1. Send heartbeat every 15 seconds
+  // 1. Send heartbeat every 15 seconds (Runs globally)
   sendHeartbeat();
   heartbeatInterval = setInterval(sendHeartbeat, 15000);
 
-  // 2. Fetch the count every 10 seconds
+  // 2. Fetch the count every 10 seconds (Runs globally)
   updateActiveUsers();
   activeUsersInterval = setInterval(updateActiveUsers, 10000);
+
+  // 3. Only show the UI on the Start Menu
+  showCounterOnStartMenu();
 }
 
 async function sendHeartbeat() {
@@ -1735,6 +1740,39 @@ async function sendHeartbeat() {
       body: JSON.stringify({ clientId: clientId })
     });
   } catch (e) { /* ignore */ }
+}
+
+async function updateActiveUsers() {
+  try {
+    const resp = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/active-users');
+    const data = await resp.json();
+    if (data.count !== undefined && activeUsersCounter) {
+      document.getElementById('userCountValue').textContent = data.count;
+    }
+  } catch (e) {
+    console.warn('Failed to fetch active users count:', e);
+  }
+}
+
+function showCounterOnStartMenu() {
+  const startMenu = document.getElementById('startMenu');
+  if (!startMenu || !activeUsersCounter) return;
+
+  const checkVisibility = () => {
+    // If start menu is visible, show counter. Otherwise, hide it.
+    if (startMenu.style.display === 'flex' || startMenu.style.display === '') {
+      activeUsersCounter.style.display = 'block';
+    } else {
+      activeUsersCounter.style.display = 'none';
+    }
+  };
+
+  // Watch for changes in the start menu's display style
+  const observer = new MutationObserver(checkVisibility);
+  observer.observe(startMenu, { attributes: true, attributeFilter: ['style'] });
+  
+  // Initial check
+  checkVisibility();
 }
 
 async function updateActiveUsers() {
