@@ -1677,11 +1677,10 @@ function stopUserThemeMusic() {
 }
 
 // ============================================
-// GLOBAL ACTIVE USERS COUNTER (Counts everywhere, shows only on Start Menu)
+// GLOBAL ACTIVE USERS COUNTER (Highly Optimized)
 // ============================================
 let activeUsersCounter = null;
-let activeUsersInterval = null;
-let heartbeatInterval = null;
+let pingInterval = null;
 let clientId = null;
 
 function initActiveUsersCounter() {
@@ -1694,7 +1693,7 @@ function initActiveUsersCounter() {
     }
   }
 
-  // Create counter UI element (Hidden by default)
+  // Create counter UI element
   const counterDiv = document.createElement('div');
   counterDiv.id = 'activeUsersCounter';
   counterDiv.style.cssText = `
@@ -1720,37 +1719,45 @@ function initActiveUsersCounter() {
   document.body.appendChild(counterDiv);
   activeUsersCounter = counterDiv;
 
-  // 1. Send heartbeat every 15 seconds (Runs globally)
-  sendHeartbeat();
-  heartbeatInterval = setInterval(sendHeartbeat, 15000);
+  // Send the first ping immediately
+  sendPing();
+  
+  // Set up the 30-second interval
+  if (pingInterval) clearInterval(pingInterval);
+  pingInterval = setInterval(sendPing, 30000);
 
-  // 2. Fetch the count every 10 seconds (Runs globally)
-  updateActiveUsers();
-  activeUsersInterval = setInterval(updateActiveUsers, 10000);
+  // Pause pinging if the user minimizes the browser / switches tabs
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      clearInterval(pingInterval);
+    } else {
+      sendPing(); // Ping immediately when they come back
+      pingInterval = setInterval(sendPing, 30000);
+    }
+  });
 
-  // 3. Only show the UI on the Start Menu
+  // Show/hide UI based on Start Menu visibility
   showCounterOnStartMenu();
 }
 
-async function sendHeartbeat() {
+async function sendPing() {
+  // Don't ping if the user is not on the site
+  if (document.hidden) return;
+
   try {
-    await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/heartbeat', {
+    const resp = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/ping', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ clientId: clientId })
     });
-  } catch (e) { /* ignore */ }
-}
-
-async function updateActiveUsers() {
-  try {
-    const resp = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/active-users');
     const data = await resp.json();
+    
+    // Update the counter UI
     if (data.count !== undefined && activeUsersCounter) {
       document.getElementById('userCountValue').textContent = data.count;
     }
   } catch (e) {
-    console.warn('Failed to fetch active users count:', e);
+    console.warn('Ping failed:', e);
   }
 }
 
@@ -1759,7 +1766,6 @@ function showCounterOnStartMenu() {
   if (!startMenu || !activeUsersCounter) return;
 
   const checkVisibility = () => {
-    // If start menu is visible, show counter. Otherwise, hide it.
     if (startMenu.style.display === 'flex' || startMenu.style.display === '') {
       activeUsersCounter.style.display = 'block';
     } else {
@@ -1767,11 +1773,8 @@ function showCounterOnStartMenu() {
     }
   };
 
-  // Watch for changes in the start menu's display style
   const observer = new MutationObserver(checkVisibility);
   observer.observe(startMenu, { attributes: true, attributeFilter: ['style'] });
-  
-  // Initial check
   checkVisibility();
 }
 
