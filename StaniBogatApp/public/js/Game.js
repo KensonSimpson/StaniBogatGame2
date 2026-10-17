@@ -1774,10 +1774,11 @@ function showCounterOnStartMenu() {
 }
 
 // ============================================
-// MULTIPLAYER MODULE (STAR TOPOLOGY – 30 PLAYERS)
+// MULTIPLAYER MODULE (PeerJS-based)
 // ============================================
 const MAX_PLAYERS = 30;
-let mpClientId = '';
+const PEER_PREFIX = 'sbg-bg-';
+
 let mpRoomCode = '';
 let mpPlayerName = '';
 let isHost = false;
@@ -1787,16 +1788,15 @@ let mpQuestions = [];
 let mpScores = {};
 let mpPlayers = [];
 let mpAnswers = {};
-let mpDataChannels = {};
-let mpPeerConnections = {};
-let mpDataChannelOpen = false;
 let mpQuestionTimer = null;
 let selectedQuestions = null;
 let selectedThemeKey = null;
-let signalingPollInterval = null;
-let signalingSince = 0;
-let processedJoinClients = new Set();
 
+let peer = null;
+let hostConnections = {};
+let joinerConnection = null;
+
+// ---- Room screen ----
 let roomScreen = document.getElementById('mpRoomScreen');
 if (!roomScreen) {
     roomScreen = document.createElement('div');
@@ -1833,331 +1833,33 @@ const startMpGameBtn = document.getElementById('startMpGameBtn');
 const leaveRoomBtn = document.getElementById('leaveRoomBtn');
 const connectionStatus = document.getElementById('connectionStatus');
 
-console.log('Player list element:', playerListEl);
-
-if (!displayRoomCode || !mpNameInput || !mpConfirmNameBtn || !playerCountDisplay ||
-    !playerListEl || !themeBrowserArea || !themeBrowserInline || !startMpGameBtn || !leaveRoomBtn || !connectionStatus) {
-    console.warn('Some multiplayer elements are still missing. Check the IDs.');
-}
-
-function createMultiplayerRoom() {
-    mpClientId = 'host-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2,5);
-    mpRoomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    displayRoomCode.textContent = mpRoomCode;
-    isHost = true;
-    signalingSince = 0;
-    processedJoinClients.clear();
-    mpPlayers = [{ id: mpClientId, name: 'Хост', isHost: true }];
-    resetUIForRole();
-    document.getElementById('multiplayerMenuScreen').style.display = 'none';
-    roomScreen.style.display = 'flex';
-    startSignalingPolling();
-    updatePlayerListUI();
-    mpNameInput.style.display = 'inline-block';
-    mpConfirmNameBtn.style.display = 'inline-block';
-    mpNameInput.value = '';
-    startMpGameBtn.style.display = 'none';
-    startMpGameBtn.disabled = true;
-    themeBrowserArea.style.display = 'none';
-    connectionStatus.style.display = 'block';
-    connectionStatus.textContent = 'Очакване на играчи...';
-}
-
-function joinMultiplayerRoom(code) {
-    mpClientId = 'joiner-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2,5);
-    mpRoomCode = code.toUpperCase();
-    displayRoomCode.textContent = mpRoomCode;
-    isHost = false;
-    signalingSince = 0;
-    processedJoinClients.clear();
-    mpPlayers = [{ id: mpClientId, name: 'Аз', isHost: false }];
-    resetUIForRole();
-    document.getElementById('joinRoomScreen').style.display = 'none';
-    roomScreen.style.display = 'flex';
-    startSignalingPolling();
-    updatePlayerListUI();
-    mpNameInput.style.display = 'inline-block';
-    mpConfirmNameBtn.style.display = 'inline-block';
-    mpNameInput.value = '';
-}
-
-function resetUIForRole() {
+// ---- Cleanup ----
+function cleanupMultiplayer() {
+    if (peer) {
+        try { peer.destroy(); } catch(e) {}
+        peer = null;
+    }
+    hostConnections = {};
+    joinerConnection = null;
+    mpPlayers = [];
+    mpAnswers = {};
+    mpScores = {};
     mpGameStarted = false;
-    mpDataChannelOpen = false;
-    for (let id in mpPeerConnections) {
-        mpPeerConnections[id].close();
-    }
-    mpPeerConnections = {};
-    mpDataChannels = {};
-    if (signalingPollInterval) clearInterval(signalingPollInterval);
-    clearTimeout(mpQuestionTimer);
-    startMpGameBtn.style.display = 'none';
-    startMpGameBtn.disabled = true;
-    themeBrowserArea.style.display = 'none';
-    mpNameInput.style.display = 'inline-block';
-    mpConfirmNameBtn.style.display = 'inline-block';
-    mpNameInput.value = '';
+    mpCurrentQuestion = 0;
+    if (mpQuestionTimer) { clearTimeout(mpQuestionTimer); mpQuestionTimer = null; }
 }
 
-function confirmNameAndConnect() {
-    mpPlayerName = mpNameInput.value.trim() || 'Играч-' + Date.now().toString(36).substring(0,4);
-    if (mpPlayerName.length > 20) mpPlayerName = mpPlayerName.substring(0, 20);
-    mpNameInput.style.display = 'none';
-    mpConfirmNameBtn.style.display = 'none';
-    const me = mpPlayers.find(p => p.id === mpClientId);
-    if (me) {
-        me.name = mpPlayerName;
-    } else {
-        mpPlayers.push({ id: mpClientId, name: mpPlayerName, isHost: isHost });
-    }
-    updatePlayerListUI();
-    if (isHost) {
-        themeBrowserArea.style.display = 'block';
-        populateThemeBrowser();
-        startMpGameBtn.style.display = 'inline-block';
-        startMpGameBtn.disabled = true;
-        updateStartButtonState();
-    }
-    if (!isHost) {
-        sendSignalingMessage({ type: 'JOIN', clientId: mpClientId, name: mpPlayerName });
-    }
-}
-
-function startSignalingPolling() {
-    if (signalingPollInterval) clearInterval(signalingPollInterval);
-    signalingSince = 0;
-    signalingPollInterval = setInterval(pollSignaling, 500);
-}
-
-async function pollSignaling() {
-    try {
-        const url = `https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&since=${signalingSince}`;
-        const resp = await fetch(url);
-        const messages = await resp.json();
-
-        for (const msg of messages) {
-            if (msg.client === mpClientId) continue;
-            const data = JSON.parse(msg.message);
-            if (data.type === 'JOIN') {
-                if (isHost) {
-                    if (!processedJoinClients.has(data.clientId)) {
-                        processedJoinClients.add(data.clientId);
-                        handleJoinerJoin(data.clientId, data.name);
-                    } else {
-                        console.warn('Duplicate JOIN from', data.clientId, 'ignored');
-                    }
-                }
-            } else if (data.type === 'SIGNAL') {
-                const targetClient = data.targetClient || msg.client;
-                if (data.sdp) {
-                    await handleRemoteSDP(targetClient, data.sdp);
-                } else if (data.candidate) {
-                    await handleRemoteICE(targetClient, data.candidate);
-                }
-            }
-            signalingSince = Math.max(signalingSince, msg.timestamp);
-        }
-    } catch (e) {
-        console.error('❌ POLL ERROR:', e);
-    }
-}
-
-async function sendSignalingMessage(message) {
-    try {
-        await fetch(
-            `https://stanibogat-api.nataliya-atanasova.workers.dev/signal?room=${mpRoomCode}&client=${mpClientId}`,
-            { method: 'POST', body: JSON.stringify(message), headers: { 'Content-Type': 'application/json' } }
-        );
-    } catch (e) {
-        console.error('❌ SEND SIGNAL ERROR:', e);
-    }
-}
-
-function handleJoinerJoin(clientId, name) {
-    if (mpPlayers.find(p => p.id === clientId)) return;
-    console.log(`👋 New player: ${name} (${clientId})`);
-    mpPlayers.push({ id: clientId, name: name, isHost: false });
-    updatePlayerListUI();
-    broadcastToAll({ type: 'PLAYER_LIST', players: mpPlayers });
-    updateStartButtonState();
-    createPeerConnectionForClient(clientId);
-}
-
-function createPeerConnectionForClient(clientId) {
-    if (mpPeerConnections[clientId]) {
-        console.warn('Already have a connection for this client');
-        return;
-    }
-    const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-    mpPeerConnections[clientId] = pc;
-
-    const channel = pc.createDataChannel('game');
-    setupDataChannel(clientId, channel);
-    mpDataChannels[clientId] = channel;
-
-    pc.onicecandidate = (event) => {
-        if (event.candidate) {
-            sendSignalingMessage({ type: 'SIGNAL', targetClient: clientId, candidate: event.candidate });
-        }
-    };
-
-    pc.createOffer().then(offer => {
-        return pc.setLocalDescription(offer);
-    }).then(() => {
-        sendSignalingMessage({ type: 'SIGNAL', targetClient: clientId, sdp: pc.localDescription });
-    }).catch(err => {
-        console.error('Error creating offer:', err);
-    });
-}
-
-async function handleRemoteSDP(clientId, sdp) {
-    const pc = mpPeerConnections[clientId];
-    if (!pc) {
-        if (isHost) {
-            console.warn('Received SDP from client without a connection (host ignores)');
-            return;
-        } else {
-            const newPc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-            mpPeerConnections[clientId] = newPc;
-            newPc.ondatachannel = (event) => {
-                const channel = event.channel;
-                setupDataChannel(clientId, channel);
-                mpDataChannels[clientId] = channel;
-                console.log(`👂 Joiner: ondatachannel fired for ${clientId}`);
-            };
-            newPc.onicecandidate = (event) => {
-                if (event.candidate) {
-                    sendSignalingMessage({ type: 'SIGNAL', targetClient: clientId, candidate: event.candidate });
-                }
-            };
-            await newPc.setRemoteDescription(new RTCSessionDescription(sdp));
-            const answer = await newPc.createAnswer();
-            await newPc.setLocalDescription(answer);
-            sendSignalingMessage({ type: 'SIGNAL', targetClient: clientId, sdp: newPc.localDescription });
-        }
-    } else {
-        if (pc.signalingState === 'have-local-offer') {
-            await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-        } else {
-            console.warn(`SDP ignored, signaling state: ${pc.signalingState}`);
-        }
-    }
-}
-
-const pendingCandidates = {};
-
-async function handleRemoteICE(clientId, candidate) {
-    const pc = mpPeerConnections[clientId];
-    if (!pc) return;
-    if (pc.remoteDescription) {
-        await pc.addIceCandidate(new RTCIceCandidate(candidate));
-    } else {
-        if (!pendingCandidates[clientId]) pendingCandidates[clientId] = [];
-        pendingCandidates[clientId].push(candidate);
-        console.log(`Queued ICE candidate for ${clientId}`);
-    }
-}
-
-function setupDataChannel(clientId, channel) {
-    console.log(`Setting up data channel for ${clientId}`);
-    channel.onopen = () => {
-        console.log(`🟢 Data channel opened for ${clientId}`);
-        mpDataChannelOpen = true;
-        connectionStatus.style.display = 'none';
-        if (pendingCandidates[clientId]) {
-            const pc = mpPeerConnections[clientId];
-            pendingCandidates[clientId].forEach(c => {
-                if (pc.remoteDescription) {
-                    pc.addIceCandidate(new RTCIceCandidate(c)).catch(e => console.error('Failed to add queued ICE:', e));
-                }
-            });
-            delete pendingCandidates[clientId];
-        }
-        if (isHost) {
-            channel.send(JSON.stringify({ type: 'PLAYER_LIST', players: mpPlayers }));
-            console.log(`Host sent PLAYER_LIST to ${clientId}:`, mpPlayers);
-        }
-        channel.send(JSON.stringify({ type: 'PLAYER_JOIN', id: mpClientId, name: mpPlayerName, isHost: isHost }));
-        updateStartButtonState();
-    };
-
-    channel.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
-        console.log(`📩 Received message from ${clientId}:`, msg);
-        switch (msg.type) {
-            case 'PLAYER_JOIN':
-                if (!mpPlayers.find(p => p.id === msg.id)) {
-                    mpPlayers.push({ id: msg.id, name: msg.name, isHost: msg.isHost || false });
-                    updatePlayerListUI();
-                    if (isHost) {
-                        broadcastToAll({ type: 'PLAYER_LIST', players: mpPlayers });
-                        updateStartButtonState();
-                    }
-                }
-                break;
-            case 'PLAYER_LIST':
-                mpPlayers = msg.players;
-                updatePlayerListUI();
-                console.log(`Player list updated for ${mpClientId}:`, mpPlayers);
-                break;
-            case 'START_GAME':
-                beginMpGame(msg.questions, msg.themeKey);
-                break;
-            case 'QUESTION':
-                displayMpQuestion(msg);
-                break;
-            case 'ANSWER':
-                if (isHost) {
-                    handleMpAnswer(msg.playerId, msg.answerIndex);
-                }
-                break;
-            case 'ROUND_RESULT':
-                processMpRoundResult(msg);
-                break;
-            case 'GAME_ENDED':
-                endMpGame(msg.scores);
-                break;
-        }
-    };
-
-    channel.onclose = () => {
-        console.log(`🔴 Data channel closed for ${clientId}`);
-        const idx = mpPlayers.findIndex(p => p.id === clientId);
-        if (idx !== -1) {
-            mpPlayers.splice(idx, 1);
-            updatePlayerListUI();
-            if (isHost) {
-                broadcastToAll({ type: 'PLAYER_LIST', players: mpPlayers });
-                updateStartButtonState();
-            }
-        }
-        delete mpDataChannels[clientId];
-        delete mpPeerConnections[clientId];
-        if (Object.keys(mpDataChannels).length === 0) {
-            mpDataChannelOpen = false;
-        }
-    };
-}
-
-function broadcastToAll(message) {
-    for (let id in mpDataChannels) {
-        if (mpDataChannels[id].readyState === 'open') {
-            mpDataChannels[id].send(JSON.stringify(message));
-        }
-    }
-    console.log(`Broadcasted to all open channels:`, message);
-}
-
+// ---- UI helpers ----
 function updatePlayerListUI() {
     if (!playerListEl) return;
     playerListEl.innerHTML = mpPlayers.map(p => {
         const card = document.createElement('div');
         card.className = 'player-card' + (p.isHost ? ' host-card' : '');
-        card.innerHTML = `${p.isHost ? '👑' : ''} ${p.name}`;
+        card.innerHTML = `${p.isHost ? '👑' : ''} ${escapeHtml(p.name)}`;
         return card.outerHTML;
     }).join('');
     playerCountDisplay.textContent = `Играчи: ${mpPlayers.length} / ${MAX_PLAYERS}`;
-    console.log('UI Updated, players:', mpPlayers);
+    console.log('UI Updated, players:', mpPlayers.length);
 }
 
 function updateStartButtonState() {
@@ -2165,19 +1867,261 @@ function updateStartButtonState() {
     const hasOtherPlayers = mpPlayers.length > 1;
     const hasTheme = selectedQuestions && selectedQuestions.length > 0;
     startMpGameBtn.disabled = !(hasOtherPlayers && hasTheme);
-    console.log('Start button disabled:', startMpGameBtn.disabled);
 }
 
+// ---- Host: create room ----
+function createMultiplayerRoom() {
+    cleanupMultiplayer();
+    mpRoomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    displayRoomCode.textContent = mpRoomCode;
+    isHost = true;
+
+    document.getElementById('multiplayerMenuScreen').style.display = 'none';
+    roomScreen.style.display = 'flex';
+
+    mpNameInput.style.display = 'inline-block';
+    mpNameInput.value = '';
+    mpConfirmNameBtn.style.display = 'inline-block';
+    startMpGameBtn.style.display = 'none';
+    startMpGameBtn.disabled = true;
+    themeBrowserArea.style.display = 'none';
+    connectionStatus.style.display = 'block';
+    connectionStatus.textContent = 'Свързване към сървъра...';
+    updatePlayerListUI();
+
+    const peerId = PEER_PREFIX + mpRoomCode;
+    console.log('🟢 Creating host peer:', peerId);
+
+    peer = new Peer(peerId, {
+        debug: 1,
+        config: {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        }
+    });
+
+    peer.on('open', (id) => {
+        console.log('🟢 Host peer ready:', id);
+        connectionStatus.textContent = 'Очакване на играчи...';
+    });
+
+    peer.on('connection', (conn) => {
+        console.log('🔗 Incoming connection:', conn.peer);
+        if (!isHost) return;
+        hostConnections[conn.peer] = conn;
+
+        conn.on('open', () => {
+            console.log('✅ Connection opened:', conn.peer);
+        });
+
+        conn.on('data', (data) => {
+            console.log('📩 Host got from', conn.peer, ':', data);
+            handleHostMessage(conn.peer, data);
+        });
+
+        conn.on('close', () => {
+            console.log('🔴 Connection closed:', conn.peer);
+            const idx = mpPlayers.findIndex(p => p.id === conn.peer);
+            if (idx !== -1) {
+                mpPlayers.splice(idx, 1);
+                updatePlayerListUI();
+                broadcastPlayerList();
+                updateStartButtonState();
+            }
+            delete hostConnections[conn.peer];
+        });
+
+        conn.on('error', (err) => console.error('❌ Conn error:', err));
+    });
+
+    peer.on('error', (err) => {
+        console.error('❌ Peer error:', err);
+        if (err.type === 'unavailable-id') {
+            alert('Кодът на стаята е зает. Опитайте отново.');
+        } else {
+            alert('Грешка при свързване: ' + err.message);
+        }
+    });
+
+    peer.on('disconnected', () => {
+        console.log('⚠️ Peer disconnected, reconnecting...');
+        try { peer.reconnect(); } catch(e) {}
+    });
+}
+
+// ---- Joiner: join room ----
+function joinMultiplayerRoom(code) {
+    cleanupMultiplayer();
+    mpRoomCode = code.toUpperCase().trim();
+    displayRoomCode.textContent = mpRoomCode;
+    isHost = false;
+
+    document.getElementById('joinRoomScreen').style.display = 'none';
+    roomScreen.style.display = 'flex';
+
+    mpNameInput.style.display = 'inline-block';
+    mpNameInput.value = '';
+    mpConfirmNameBtn.style.display = 'inline-block';
+    startMpGameBtn.style.display = 'none';
+    startMpGameBtn.disabled = true;
+    themeBrowserArea.style.display = 'none';
+    connectionStatus.style.display = 'block';
+    connectionStatus.textContent = 'Свързване към стаята...';
+    updatePlayerListUI();
+
+    peer = new Peer({
+        debug: 1,
+        config: {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        }
+    });
+
+    peer.on('open', (id) => {
+        console.log('🟢 Joiner peer ready:', id);
+        const hostPeerId = PEER_PREFIX + mpRoomCode;
+        console.log('🔗 Connecting to:', hostPeerId);
+
+        joinerConnection = peer.connect(hostPeerId, { reliable: true });
+
+        joinerConnection.on('open', () => {
+            console.log('✅ Connected to host');
+            connectionStatus.textContent = 'Свързан! Въведете име и потвърдете.';
+        });
+
+        joinerConnection.on('data', (data) => {
+            console.log('📩 Joiner got:', data);
+            handleJoinerMessage(data);
+        });
+
+        joinerConnection.on('close', () => {
+            console.log('🔴 Disconnected from host');
+            alert('Връзката с хоста беше прекъсната.');
+            leaveRoomBtn.click();
+        });
+
+        joinerConnection.on('error', (err) => console.error('❌ Conn error:', err));
+    });
+
+    peer.on('error', (err) => {
+        console.error('❌ Peer error:', err);
+        if (err.type === 'peer-unavailable') {
+            alert('Стаята не е намерена. Проверете кода.');
+        } else {
+            alert('Грешка: ' + err.message);
+        }
+    });
+}
+
+// ---- Confirm name ----
+function confirmNameAndConnect() {
+    mpPlayerName = mpNameInput.value.trim() || 'Играч-' + Math.floor(Math.random() * 1000);
+    if (mpPlayerName.length > 20) mpPlayerName = mpPlayerName.substring(0, 20);
+
+    mpNameInput.style.display = 'none';
+    mpConfirmNameBtn.style.display = 'none';
+
+    if (isHost) {
+        mpPlayers = [{ id: 'host', name: mpPlayerName, isHost: true }];
+        updatePlayerListUI();
+        themeBrowserArea.style.display = 'block';
+        populateThemeBrowser();
+        startMpGameBtn.style.display = 'inline-block';
+        startMpGameBtn.disabled = true;
+        updateStartButtonState();
+        connectionStatus.style.display = 'none';
+    } else {
+        if (joinerConnection && joinerConnection.open) {
+            joinerConnection.send({ type: 'PLAYER_JOIN', name: mpPlayerName });
+            console.log('📤 Sent PLAYER_JOIN');
+            connectionStatus.textContent = 'Очакване на потвърждение от хоста...';
+        } else {
+            alert('Все още не сте свързани с хоста. Изчакайте малко.');
+            mpNameInput.style.display = 'inline-block';
+            mpConfirmNameBtn.style.display = 'inline-block';
+        }
+    }
+}
+
+// ---- Host message handler ----
+function handleHostMessage(peerId, msg) {
+    switch (msg.type) {
+        case 'PLAYER_JOIN': {
+            if (mpPlayers.find(p => p.id === peerId)) return;
+            mpPlayers.push({ id: peerId, name: msg.name, isHost: false });
+            console.log(`👋 ${msg.name} (${peerId}) joined`);
+            updatePlayerListUI();
+            broadcastPlayerList();
+            updateStartButtonState();
+
+            const newConn = hostConnections[peerId];
+            if (newConn && newConn.open) {
+                newConn.send({
+                    type: 'ROOM_STATE',
+                    players: mpPlayers,
+                    gameStarted: mpGameStarted
+                });
+            }
+            break;
+        }
+        case 'ANSWER': {
+            mpAnswers[peerId] = msg.answerIndex;
+            console.log(`📝 Answer from ${peerId}:`, msg.answerIndex);
+            const answeredCount = Object.keys(mpAnswers).length;
+            if (answeredCount >= mpPlayers.length) finishMpQuestion();
+            break;
+        }
+    }
+}
+
+// ---- Joiner message handler ----
+function handleJoinerMessage(msg) {
+    switch (msg.type) {
+        case 'ROOM_STATE':
+            mpPlayers = msg.players;
+            updatePlayerListUI();
+            connectionStatus.style.display = 'none';
+            break;
+        case 'PLAYER_LIST':
+            mpPlayers = msg.players;
+            updatePlayerListUI();
+            break;
+        case 'START_GAME':
+            beginMpGame(msg.questions, msg.themeKey);
+            break;
+        case 'QUESTION':
+            displayMpQuestion(msg);
+            break;
+        case 'ROUND_RESULT':
+            processMpRoundResult(msg);
+            break;
+        case 'GAME_ENDED':
+            endMpGame(msg.scores);
+            break;
+    }
+}
+
+function broadcastPlayerList() {
+    const msg = { type: 'PLAYER_LIST', players: mpPlayers };
+    for (const peerId in hostConnections) {
+        const conn = hostConnections[peerId];
+        if (conn.open) conn.send(msg);
+    }
+}
+
+// ---- Theme browser (host only) ----
 async function populateThemeBrowser() {
     if (!themeBrowserInline) return;
     themeBrowserInline.innerHTML = '';
 
-    const builtInContainer = document.createElement('div');
-    builtInContainer.style.cssText = 'width:100%; margin-bottom:10px;';
     const builtInLabel = document.createElement('div');
     builtInLabel.textContent = '— Вградени теми —';
     builtInLabel.style.cssText = 'color:gold; font-weight:bold; margin:5px 0; width:100%; text-align:center;';
-    builtInContainer.appendChild(builtInLabel);
+    themeBrowserInline.appendChild(builtInLabel);
 
     for (const themeKey in QUESTIONS_DATA) {
         const chip = document.createElement('div');
@@ -2190,16 +2134,13 @@ async function populateThemeBrowser() {
             selectedQuestions = QUESTIONS_DATA[themeKey]['bg'] || QUESTIONS_DATA[themeKey][Object.keys(QUESTIONS_DATA[themeKey])[0]];
             updateStartButtonState();
         });
-        builtInContainer.appendChild(chip);
+        themeBrowserInline.appendChild(chip);
     }
-    themeBrowserInline.appendChild(builtInContainer);
 
-    const customContainer = document.createElement('div');
-    customContainer.style.cssText = 'width:100%;';
     const customLabel = document.createElement('div');
     customLabel.textContent = '— Потребителски теми —';
     customLabel.style.cssText = 'color:gold; font-weight:bold; margin:5px 0; width:100%; text-align:center;';
-    customContainer.appendChild(customLabel);
+    themeBrowserInline.appendChild(customLabel);
 
     try {
         const response = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/themes');
@@ -2215,30 +2156,29 @@ async function populateThemeBrowser() {
                 selectedQuestions = JSON.parse(theme.questionsData);
                 updateStartButtonState();
             });
-            customContainer.appendChild(chip);
+            themeBrowserInline.appendChild(chip);
         });
     } catch (e) {
-        console.warn('Failed to load custom themes:', e);
-        const errMsg = document.createElement('div');
-        errMsg.textContent = 'Грешка при зареждане на потребителски теми.';
-        errMsg.style.cssText = 'color:#ff6b6b; font-size:12px;';
-        customContainer.appendChild(errMsg);
+        console.warn('Could not load custom themes:', e);
     }
-    themeBrowserInline.appendChild(customContainer);
 }
 
+// ---- Start game ----
 if (startMpGameBtn) {
     startMpGameBtn.addEventListener('click', () => {
         if (!isHost || mpGameStarted) return;
-        if (Object.keys(mpDataChannels).length === 0) {
-            alert('Няма свързани играчи.');
-            return;
-        }
         if (!selectedQuestions || selectedQuestions.length === 0) {
             alert('Моля, изберете тема.');
             return;
         }
-        broadcastToAll({ type: 'START_GAME', questions: selectedQuestions, themeKey: selectedThemeKey });
+        if (Object.keys(hostConnections).length === 0) {
+            alert('Няма свързани играчи.');
+            return;
+        }
+        const msg = { type: 'START_GAME', questions: selectedQuestions, themeKey: selectedThemeKey };
+        for (const pid in hostConnections) {
+            if (hostConnections[pid].open) hostConnections[pid].send(msg);
+        }
         beginMpGame(selectedQuestions, selectedThemeKey);
     });
 }
@@ -2249,6 +2189,7 @@ function beginMpGame(questions, themeKey) {
     mpCurrentQuestion = 0;
     mpScores = {};
     mpPlayers.forEach(p => mpScores[p.id] = 0);
+
     themeBrowserArea.style.display = 'none';
     startMpGameBtn.style.display = 'none';
     roomScreen.style.display = 'none';
@@ -2256,9 +2197,12 @@ function beginMpGame(questions, themeKey) {
     const gameContainer = document.getElementById('gameContainer');
     gameContainer.style.display = 'block';
     gameContainer.style.opacity = '1';
+
+    // Apply theme visuals
     currentTheme = themeKey;
     currentThemeQuestions = questions;
     currentTotalQuestions = questions.length;
+
     const moneyTree = document.getElementById('moneyTree');
     if (moneyTree) { moneyTree.style.display = 'block'; generateMoneyTree(themeKey); }
     const moneyTreeToggle = document.getElementById('moneyTreeToggle');
@@ -2269,9 +2213,9 @@ function beginMpGame(questions, themeKey) {
     if (backButtonContainer) backButtonContainer.style.display = 'block';
     const gameBack = document.getElementById('gameBackButton');
     if (gameBack) gameBack.style.display = 'block';
-    
+
     gameContainer.classList.remove('narrow');
-    moneyTreeToggle.innerHTML = '💰';
+    if (moneyTreeToggle) moneyTreeToggle.innerHTML = '💰';
     gameState.isMoneyTreeVisible = false;
     setTimeout(() => updateGameContainerResponsiveness(), 100);
     stopRetroMusic();
@@ -2286,20 +2230,35 @@ function beginMpGame(questions, themeKey) {
     updateLevelIndicator();
     const answersContainer = document.getElementById('answersContainer');
     if (answersContainer) answersContainer.innerHTML = '';
-    sendNextMpQuestion();
+
+    if (isHost) sendNextMpQuestion();
 }
 
 function sendNextMpQuestion() {
-    clearTimeout(mpQuestionTimer);
+    if (!isHost) return;
+    if (mpQuestionTimer) clearTimeout(mpQuestionTimer);
     if (mpCurrentQuestion >= mpQuestions.length) {
-        broadcastToAll({ type: 'GAME_ENDED', scores: mpScores });
+        const msg = { type: 'GAME_ENDED', scores: mpScores };
+        for (const pid in hostConnections) {
+            if (hostConnections[pid].open) hostConnections[pid].send(msg);
+        }
         endMpGame(mpScores);
         return;
     }
     const q = mpQuestions[mpCurrentQuestion];
-    broadcastToAll({ type: 'QUESTION', question: q.question, answers: q.answers, correct: q.correct, timeLimit: 15 });
+    const msg = {
+        type: 'QUESTION',
+        questionIndex: mpCurrentQuestion,
+        question: q.question,
+        answers: q.answers,
+        correct: q.correct,
+        timeLimit: 15
+    };
+    for (const pid in hostConnections) {
+        if (hostConnections[pid].open) hostConnections[pid].send(msg);
+    }
     mpAnswers = {};
-    displayMpQuestion({ question: q.question, answers: q.answers });
+    displayMpQuestion(msg);
     mpQuestionTimer = setTimeout(() => {
         mpCurrentQuestion++;
         sendNextMpQuestion();
@@ -2307,6 +2266,7 @@ function sendNextMpQuestion() {
 }
 
 function displayMpQuestion(data) {
+    if (typeof data.questionIndex === 'number') mpCurrentQuestion = data.questionIndex;
     document.getElementById('questionText').textContent = data.question;
     const answersContainer = document.getElementById('answersContainer');
     answersContainer.innerHTML = '';
@@ -2316,9 +2276,11 @@ function displayMpQuestion(data) {
         btn.textContent = `${String.fromCharCode(65 + idx)}) ${ans}`;
         btn.onclick = () => {
             if (isHost) {
-                handleMpAnswer(mpClientId, idx);
+                handleHostMessage('host', { type: 'ANSWER', answerIndex: idx });
             } else {
-                broadcastToAll({ type: 'ANSWER', playerId: mpClientId, answerIndex: idx });
+                if (joinerConnection && joinerConnection.open) {
+                    joinerConnection.send({ type: 'ANSWER', answerIndex: idx });
+                }
             }
             btn.disabled = true;
         };
@@ -2326,17 +2288,8 @@ function displayMpQuestion(data) {
     });
 }
 
-function handleMpAnswer(playerId, answerIndex) {
-    if (!isHost) return;
-    mpAnswers[playerId] = answerIndex;
-    const answeredPlayers = Object.keys(mpAnswers).filter(id => mpPlayers.find(p => p.id === id));
-    if (answeredPlayers.length >= mpPlayers.length) {
-        finishMpQuestion();
-    }
-}
-
 function finishMpQuestion() {
-    clearTimeout(mpQuestionTimer);
+    if (mpQuestionTimer) clearTimeout(mpQuestionTimer);
     const q = mpQuestions[mpCurrentQuestion];
     const correct = q.correct;
     const results = mpPlayers.map(p => ({
@@ -2350,93 +2303,80 @@ function finishMpQuestion() {
             if (player) mpScores[player.id] = (mpScores[player.id] || 0) + 1;
         }
     });
-    broadcastToAll({ type: 'ROUND_RESULT', correct, results, scores: mpScores });
+    const msg = { type: 'ROUND_RESULT', correct, results, scores: mpScores, questionIndex: mpCurrentQuestion };
+    for (const pid in hostConnections) {
+        if (hostConnections[pid].open) hostConnections[pid].send(msg);
+    }
+    processMpRoundResult(msg);
     mpCurrentQuestion++;
-    sendNextMpQuestion();
+    if (mpCurrentQuestion < mpQuestions.length) {
+        mpQuestionTimer = setTimeout(() => sendNextMpQuestion(), 4000);
+    } else {
+        const endMsg = { type: 'GAME_ENDED', scores: mpScores };
+        for (const pid in hostConnections) {
+            if (hostConnections[pid].open) hostConnections[pid].send(endMsg);
+        }
+        setTimeout(() => endMpGame(mpScores), 4000);
+    }
 }
 
 function processMpRoundResult(data) {
     const btns = document.querySelectorAll('.answer-btn');
     const correctBtn = btns[data.correct];
-    const playerResult = data.results.find(r => r.name === mpPlayerName);
-    let selectedIdx = playerResult ? playerResult.answer : -1;
-    const selectedBtn = (selectedIdx >= 0 && selectedIdx < btns.length) ? btns[selectedIdx] : null;
+    const myId = isHost ? 'host' : (peer ? peer.id : null);
+    const myPlayer = mpPlayers.find(p => p.id === myId);
+    const playerResult = myPlayer ? data.results.find(r => r.name === myPlayer.name) : null;
 
     btns.forEach(b => b.disabled = true);
 
-    if (selectedBtn) {
-        selectedBtn.style.background = 'linear-gradient(135deg, #ffed4e, #ffd700)';
-        selectedBtn.style.color = '#000066';
-        selectedBtn.style.border = '3px solid #cc9900';
-    }
-
-    clearTimeout(gameState.wrongAnswerTimeout);
-    gameState.wrongAnswerTimeout = setTimeout(() => {
-        if (playerResult && playerResult.correct) {
-            if (correctBtn) {
-                correctBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
-                correctBtn.style.color = '#000066';
-                correctBtn.style.border = '3px solid #00aa00';
-            }
-            let sound = 'correctAnswerSound';
-            if (gameState.currentQuestion < 5) sound = 'correctAnswerSound';
-            else if (gameState.currentQuestion < 10) sound = 'correctAnswer2';
-            else sound = 'correctAnswer3';
-            playSound(sound);
-            setTimeout(() => {
-                alert(`✅ Правилен отговор!`);
-            }, 3000);
-        } else {
-            if (correctBtn) {
-                correctBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
-                correctBtn.style.color = '#000066';
-                correctBtn.style.border = '3px solid #00aa00';
-            }
-            playSound('wrongAnswerSound');
-            setTimeout(() => {
-                alert(`❌ Грешен отговор!`);
-            }, 3000);
+    if (playerResult && playerResult.correct) {
+        if (correctBtn) {
+            correctBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
+            correctBtn.style.color = '#000066';
+            correctBtn.style.border = '3px solid #00aa00';
         }
-    }, 2500);
+        const qIdx = data.questionIndex || 0;
+        let sound = 'correctAnswerSound';
+        if (qIdx >= 10) sound = 'correctAnswer3';
+        else if (qIdx >= 5) sound = 'correctAnswer2';
+        playSound(sound);
+    } else {
+        if (correctBtn) {
+            correctBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
+            correctBtn.style.color = '#000066';
+            correctBtn.style.border = '3px solid #00aa00';
+        }
+        playSound('wrongAnswerSound');
+    }
 }
 
 function endMpGame(scores) {
-    clearTimeout(mpQuestionTimer);
+    if (mpQuestionTimer) clearTimeout(mpQuestionTimer);
     const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
     const winner = sorted[0];
-    alert(`🏆 Победител: ${mpPlayers.find(p => p.id === winner[0])?.name || 'Unknown'} с ${winner[1]} точки!`);
-    mpGameStarted = false;
+    if (winner) {
+        const wp = mpPlayers.find(p => p.id === winner[0]);
+        alert(`🏆 Победител: ${wp ? wp.name : 'Unknown'} с ${winner[1]} точки!`);
+    }
+    cleanupMultiplayer();
     roomScreen.style.display = 'none';
     document.getElementById('gameContainer').style.display = 'none';
     document.getElementById('multiplayerMenuScreen').style.display = 'flex';
-    for (let id in mpPeerConnections) {
-        mpPeerConnections[id].close();
-    }
-    mpPeerConnections = {};
-    mpDataChannels = {};
-    if (signalingPollInterval) clearInterval(signalingPollInterval);
-    mpPlayers = [];
-    mpAnswers = {};
-    mpDataChannelOpen = false;
 }
 
+// ---- Leave ----
 if (leaveRoomBtn) {
     leaveRoomBtn.addEventListener('click', () => {
-        for (let id in mpPeerConnections) {
-            mpPeerConnections[id].close();
-        }
-        mpPeerConnections = {};
-        mpDataChannels = {};
-        if (signalingPollInterval) clearInterval(signalingPollInterval);
-        clearTimeout(mpQuestionTimer);
-        mpPlayers = [];
-        mpAnswers = {};
-        mpGameStarted = false;
-        mpDataChannelOpen = false;
+        cleanupMultiplayer();
         roomScreen.style.display = 'none';
         document.getElementById('multiplayerMenuScreen').style.display = 'flex';
     });
 }
+
+// Auto-leave on tab close
+window.addEventListener('beforeunload', () => {
+    if (peer) { try { peer.destroy(); } catch(e) {} }
+});
 
 // ============================================
 // INITIALIZATION
