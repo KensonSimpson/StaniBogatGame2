@@ -1806,10 +1806,10 @@ function showCounterOnStartMenu() {
 }
 
 // ============================================
-// MULTIPLAYER MODULE (WebSocket + Durable Objects)
+// MULTIPLAYER MODULE (PeerJS-based)
 // ============================================
 const MAX_PLAYERS = 30;
-const WS_BASE_URL = 'wss://stanibogat-api.nataliya-atanasova.workers.dev/ws';
+const PEER_PREFIX = 'sbg-bg-';
 
 let mpRoomCode = '';
 let mpPlayerName = '';
@@ -1824,8 +1824,9 @@ let mpQuestionTimer = null;
 let selectedQuestions = null;
 let selectedThemeKey = null;
 
-let ws = null;
-let wsReady = false;
+let peer = null;
+let hostConnections = {};
+let joinerConnection = null;
 
 // ---- Room screen ----
 let roomScreen = document.getElementById('mpRoomScreen');
@@ -1866,11 +1867,12 @@ const connectionStatus = document.getElementById('connectionStatus');
 
 // ---- Cleanup ----
 function cleanupMultiplayer() {
-    if (ws) {
-        try { ws.close(); } catch(e) {}
-        ws = null;
+    if (peer) {
+        try { peer.destroy(); } catch(e) {}
+        peer = null;
     }
-    wsReady = false;
+    hostConnections = {};
+    joinerConnection = null;
     mpPlayers = [];
     mpAnswers = {};
     mpScores = {};
@@ -1899,60 +1901,6 @@ function updateStartButtonState() {
     startMpGameBtn.disabled = !(hasOtherPlayers && hasTheme);
 }
 
-// ---- WebSocket connection ----
-function connectWebSocket(roomCode) {
-    const url = `${WS_BASE_URL}?room=${encodeURIComponent(roomCode)}`;
-    console.log('🔌 Connecting to WebSocket:', url);
-    ws = new WebSocket(url);
-
-    ws.onopen = () => {
-        console.log('✅ WebSocket connected');
-        wsReady = true;
-        connectionStatus.textContent = 'Свързан! Въведете име и потвърдете.';
-    };
-
-    ws.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
-        console.log('📩 Received:', msg);
-        handleServerMessage(msg);
-    };
-
-    ws.onerror = (err) => {
-        console.error('❌ WebSocket error:', err);
-        alert('Грешка при свързване. Опитайте отново.');
-    };
-
-    ws.onclose = () => {
-        console.log('🔴 WebSocket closed');
-        wsReady = false;
-        if (mpGameStarted) {
-            alert('Връзката със стаята беше прекъсната.');
-        }
-    };
-}
-
-function handleServerMessage(msg) {
-    switch (msg.type) {
-        case 'PLAYER_LIST':
-            mpPlayers = msg.players;
-            updatePlayerListUI();
-            updateStartButtonState();
-            break;
-        case 'START_GAME':
-            beginMpGame(msg.questions, msg.themeKey);
-            break;
-        case 'QUESTION':
-            displayMpQuestion(msg);
-            break;
-        case 'ROUND_RESULT':
-            processMpRoundResult(msg);
-            break;
-        case 'GAME_ENDED':
-            endMpGame(msg.scores);
-            break;
-    }
-}
-
 // ---- Host: create room ----
 function createMultiplayerRoom() {
     cleanupMultiplayer();
@@ -1970,10 +1918,59 @@ function createMultiplayerRoom() {
     startMpGameBtn.disabled = true;
     themeBrowserArea.style.display = 'none';
     connectionStatus.style.display = 'block';
-    connectionStatus.textContent = 'Свързване към стаята...';
+    connectionStatus.textContent = 'Свързване към сървъра...';
     updatePlayerListUI();
 
-    connectWebSocket(mpRoomCode);
+    const peerId = PEER_PREFIX + mpRoomCode;
+    console.log('🟢 Creating host peer:', peerId);
+
+    peer = new Peer(peerId, {
+        debug: 1,
+        config: {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        }
+    });
+
+    peer.on('open', (id) => {
+        console.log('🟢 Host peer ready:', id);
+        connectionStatus.textContent = 'Очакване на играчи...';
+    });
+
+    peer.on('connection', (conn) => {
+        console.log('🔗 Incoming connection:', conn.peer);
+        if (!isHost) return;
+        hostConnections[conn.peer] = conn;
+
+        conn.on('open', () => console.log('✅ Connection opened:', conn.peer));
+
+        conn.on('data', (data) => {
+            console.log('📩 Host got from', conn.peer, ':', data);
+            handleHostMessage(conn.peer, data);
+        });
+
+        conn.on('close', () => {
+            console.log('🔴 Connection closed:', conn.peer);
+            const idx = mpPlayers.findIndex(p => p.id === conn.peer);
+            if (idx !== -1) {
+                mpPlayers.splice(idx, 1);
+                updatePlayerListUI();
+                broadcastPlayerList();
+                updateStartButtonState();
+            }
+            delete hostConnections[conn.peer];
+        });
+
+        conn.on('error', (err) => console.error('❌ Conn error:', err));
+    });
+
+    peer.on('error', (err) => {
+        console.error('❌ Peer error:', err);
+        if (err.type === 'unavailable-id') alert('Кодът на стаята е зает. Опитайте отново.');
+        else alert('Грешка при свързване: ' + err.message);
+    });
 }
 
 // ---- Joiner: join room ----
@@ -1996,7 +1993,45 @@ function joinMultiplayerRoom(code) {
     connectionStatus.textContent = 'Свързване към стаята...';
     updatePlayerListUI();
 
-    connectWebSocket(mpRoomCode);
+    peer = new Peer({
+        debug: 1,
+        config: {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        }
+    });
+
+    peer.on('open', (id) => {
+        console.log('🟢 Joiner peer ready:', id);
+        const hostPeerId = PEER_PREFIX + mpRoomCode;
+        console.log('🔗 Connecting to:', hostPeerId);
+
+        joinerConnection = peer.connect(hostPeerId, { reliable: true });
+
+        joinerConnection.on('open', () => {
+            console.log('✅ Connected to host');
+            connectionStatus.textContent = 'Свързан! Въведете име и потвърдете.';
+        });
+
+        joinerConnection.on('data', (data) => {
+            console.log('📩 Joiner got:', data);
+            handleJoinerMessage(data);
+        });
+
+        joinerConnection.on('close', () => {
+            console.log('🔴 Disconnected from host');
+            alert('Връзката с хоста беше прекъсната.');
+            leaveRoomBtn.click();
+        });
+    });
+
+    peer.on('error', (err) => {
+        console.error('❌ Peer error:', err);
+        if (err.type === 'peer-unavailable') alert('Стаята не е намерена. Проверете кода.');
+        else alert('Грешка: ' + err.message);
+    });
 }
 
 // ---- Confirm name ----
@@ -2006,13 +2041,6 @@ function confirmNameAndConnect() {
 
     mpNameInput.style.display = 'none';
     mpConfirmNameBtn.style.display = 'none';
-
-    if (!wsReady) {
-        alert('Все още не сте свързани. Изчакайте малко.');
-        mpNameInput.style.display = 'inline-block';
-        mpConfirmNameBtn.style.display = 'inline-block';
-        return;
-    }
 
     if (isHost) {
         mpPlayers = [{ id: 'host', name: mpPlayerName, isHost: true }];
@@ -2024,8 +2052,80 @@ function confirmNameAndConnect() {
         updateStartButtonState();
         connectionStatus.style.display = 'none';
     } else {
-        ws.send(JSON.stringify({ type: 'JOIN', name: mpPlayerName, isHost: false }));
-        connectionStatus.textContent = 'Очакване на потвърждение от хоста...';
+        if (joinerConnection && joinerConnection.open) {
+            joinerConnection.send({ type: 'PLAYER_JOIN', name: mpPlayerName });
+            connectionStatus.textContent = 'Очакване на потвърждение от хоста...';
+        } else {
+            alert('Все още не сте свързани с хоста. Изчакайте малко.');
+            mpNameInput.style.display = 'inline-block';
+            mpConfirmNameBtn.style.display = 'inline-block';
+        }
+    }
+}
+
+// ---- Host message handler ----
+function handleHostMessage(peerId, msg) {
+    switch (msg.type) {
+        case 'PLAYER_JOIN': {
+            if (mpPlayers.find(p => p.id === peerId)) return;
+            mpPlayers.push({ id: peerId, name: msg.name, isHost: false });
+            console.log(`👋 ${msg.name} (${peerId}) joined`);
+            updatePlayerListUI();
+            broadcastPlayerList();
+            updateStartButtonState();
+
+            const newConn = hostConnections[peerId];
+            if (newConn && newConn.open) {
+                newConn.send({
+                    type: 'ROOM_STATE',
+                    players: mpPlayers,
+                    gameStarted: mpGameStarted
+                });
+            }
+            break;
+        }
+        case 'ANSWER': {
+            mpAnswers[peerId] = msg.answerIndex;
+            console.log(`📝 Answer from ${peerId}:`, msg.answerIndex);
+            const answeredCount = Object.keys(mpAnswers).length;
+            if (answeredCount >= mpPlayers.length) finishMpQuestion();
+            break;
+        }
+    }
+}
+
+// ---- Joiner message handler ----
+function handleJoinerMessage(msg) {
+    switch (msg.type) {
+        case 'ROOM_STATE':
+            mpPlayers = msg.players;
+            updatePlayerListUI();
+            connectionStatus.style.display = 'none';
+            break;
+        case 'PLAYER_LIST':
+            mpPlayers = msg.players;
+            updatePlayerListUI();
+            break;
+        case 'START_GAME':
+            beginMpGame(msg.questions, msg.themeKey);
+            break;
+        case 'QUESTION':
+            displayMpQuestion(msg);
+            break;
+        case 'ROUND_RESULT':
+            processMpRoundResult(msg);
+            break;
+        case 'GAME_ENDED':
+            endMpGame(msg.scores);
+            break;
+    }
+}
+
+function broadcastPlayerList() {
+    const msg = { type: 'PLAYER_LIST', players: mpPlayers };
+    for (const peerId in hostConnections) {
+        const conn = hostConnections[peerId];
+        if (conn.open) conn.send(msg);
     }
 }
 
@@ -2079,7 +2179,7 @@ async function populateThemeBrowser() {
     }
 }
 
-// ---- Start game (host) ----
+// ---- Start game ----
 if (startMpGameBtn) {
     startMpGameBtn.addEventListener('click', () => {
         if (!isHost || mpGameStarted) return;
@@ -2087,15 +2187,15 @@ if (startMpGameBtn) {
             alert('Моля, изберете тема.');
             return;
         }
-        if (mpPlayers.length < 2) {
+        if (Object.keys(hostConnections).length === 0) {
             alert('Няма свързани играчи.');
             return;
         }
-        ws.send(JSON.stringify({
-            type: 'START_GAME',
-            questions: selectedQuestions,
-            themeKey: selectedThemeKey
-        }));
+        const msg = { type: 'START_GAME', questions: selectedQuestions, themeKey: selectedThemeKey };
+        for (const pid in hostConnections) {
+            if (hostConnections[pid].open) hostConnections[pid].send(msg);
+        }
+        beginMpGame(selectedQuestions, selectedThemeKey);
     });
 }
 
@@ -2136,15 +2236,45 @@ function beginMpGame(questions, themeKey) {
     stopRetroMusic();
     setThemeBackground(themeKey);
     playThemeMusic(themeKey);
-    if (themeKey === 'Minecraft') {
-        applyMinecraftTheme();
-    } else {
-        removeMinecraftTheme();
-    }
+    if (themeKey === 'Minecraft') applyMinecraftTheme();
+    else removeMinecraftTheme();
 
     updateLevelIndicator();
     const answersContainer = document.getElementById('answersContainer');
     if (answersContainer) answersContainer.innerHTML = '';
+
+    if (isHost) sendNextMpQuestion();
+}
+
+function sendNextMpQuestion() {
+    if (!isHost) return;
+    if (mpQuestionTimer) clearTimeout(mpQuestionTimer);
+    if (mpCurrentQuestion >= mpQuestions.length) {
+        const msg = { type: 'GAME_ENDED', scores: mpScores };
+        for (const pid in hostConnections) {
+            if (hostConnections[pid].open) hostConnections[pid].send(msg);
+        }
+        endMpGame(mpScores);
+        return;
+    }
+    const q = mpQuestions[mpCurrentQuestion];
+    const msg = {
+        type: 'QUESTION',
+        questionIndex: mpCurrentQuestion,
+        question: q.question,
+        answers: q.answers,
+        correct: q.correct,
+        timeLimit: 15
+    };
+    for (const pid in hostConnections) {
+        if (hostConnections[pid].open) hostConnections[pid].send(msg);
+    }
+    mpAnswers = {};
+    displayMpQuestion(msg);
+    mpQuestionTimer = setTimeout(() => {
+        mpCurrentQuestion++;
+        sendNextMpQuestion();
+    }, 15000);
 }
 
 function displayMpQuestion(data) {
@@ -2157,8 +2287,12 @@ function displayMpQuestion(data) {
         btn.className = 'answer-btn';
         btn.textContent = `${String.fromCharCode(65 + idx)}) ${ans}`;
         btn.onclick = () => {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'ANSWER', answerIndex: idx }));
+            if (isHost) {
+                handleHostMessage('host', { type: 'ANSWER', answerIndex: idx });
+            } else {
+                if (joinerConnection && joinerConnection.open) {
+                    joinerConnection.send({ type: 'ANSWER', answerIndex: idx });
+                }
             }
             btn.disabled = true;
         };
@@ -2166,11 +2300,44 @@ function displayMpQuestion(data) {
     });
 }
 
+function finishMpQuestion() {
+    if (mpQuestionTimer) clearTimeout(mpQuestionTimer);
+    const q = mpQuestions[mpCurrentQuestion];
+    const correct = q.correct;
+    const results = mpPlayers.map(p => ({
+        name: p.name,
+        answer: mpAnswers[p.id],
+        correct: mpAnswers[p.id] === correct
+    }));
+    results.forEach(r => {
+        if (r.correct) {
+            const player = mpPlayers.find(p => p.name === r.name);
+            if (player) mpScores[player.id] = (mpScores[player.id] || 0) + 1;
+        }
+    });
+    const msg = { type: 'ROUND_RESULT', correct, results, scores: mpScores, questionIndex: mpCurrentQuestion };
+    for (const pid in hostConnections) {
+        if (hostConnections[pid].open) hostConnections[pid].send(msg);
+    }
+    processMpRoundResult(msg);
+    mpCurrentQuestion++;
+    if (mpCurrentQuestion < mpQuestions.length) {
+        mpQuestionTimer = setTimeout(() => sendNextMpQuestion(), 4000);
+    } else {
+        const endMsg = { type: 'GAME_ENDED', scores: mpScores };
+        for (const pid in hostConnections) {
+            if (hostConnections[pid].open) hostConnections[pid].send(endMsg);
+        }
+        setTimeout(() => endMpGame(mpScores), 4000);
+    }
+}
+
 function processMpRoundResult(data) {
     const btns = document.querySelectorAll('.answer-btn');
     const correctBtn = btns[data.correct];
-    const myName = mpPlayerName;
-    const playerResult = data.results.find(r => r.name === myName);
+    const myId = isHost ? 'host' : (peer ? peer.id : null);
+    const myPlayer = mpPlayers.find(p => p.id === myId);
+    const playerResult = myPlayer ? data.results.find(r => r.name === myPlayer.name) : null;
 
     btns.forEach(b => b.disabled = true);
 
@@ -2219,7 +2386,7 @@ if (leaveRoomBtn) {
 }
 
 window.addEventListener('beforeunload', () => {
-    if (ws) { try { ws.close(); } catch(e) {} }
+    if (peer) { try { peer.destroy(); } catch(e) {} }
 });
 
 // ============================================
