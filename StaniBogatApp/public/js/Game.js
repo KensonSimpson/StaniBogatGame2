@@ -1684,7 +1684,6 @@ let pingInterval = null;
 let clientId = null;
 
 function initActiveUsersCounter() {
-  // Generate a unique ID for this specific tab
   if (!clientId) {
     clientId = sessionStorage.getItem('activeUserClientId');
     if (!clientId) {
@@ -1693,7 +1692,6 @@ function initActiveUsersCounter() {
     }
   }
 
-  // Create counter UI element
   const counterDiv = document.createElement('div');
   counterDiv.id = 'activeUsersCounter';
   counterDiv.style.cssText = `
@@ -1719,31 +1717,25 @@ function initActiveUsersCounter() {
   document.body.appendChild(counterDiv);
   activeUsersCounter = counterDiv;
 
-  // Send the first ping immediately
   sendPing();
   
-  // Set up the 30-second interval
   if (pingInterval) clearInterval(pingInterval);
   pingInterval = setInterval(sendPing, 30000);
 
-  // Pause pinging if the user minimizes the browser / switches tabs
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       clearInterval(pingInterval);
     } else {
-      sendPing(); // Ping immediately when they come back
+      sendPing();
       pingInterval = setInterval(sendPing, 30000);
     }
   });
 
-  // Show/hide UI based on Start Menu visibility
   showCounterOnStartMenu();
 }
 
 async function sendPing() {
-  // Don't ping if the user is not on the site
   if (document.hidden) return;
-
   try {
     const resp = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/ping', {
       method: 'POST',
@@ -1751,8 +1743,6 @@ async function sendPing() {
       body: JSON.stringify({ clientId: clientId })
     });
     const data = await resp.json();
-    
-    // Update the counter UI
     if (data.count !== undefined && activeUsersCounter) {
       document.getElementById('userCountValue').textContent = data.count;
     }
@@ -1778,97 +1768,7 @@ function showCounterOnStartMenu() {
   checkVisibility();
 }
 
-async function updateActiveUsers() {
-  try {
-    const resp = await fetch('https://stanibogat-api.nataliya-atanasova.workers.dev/active-users');
-    const data = await resp.json();
-    if (data.count !== undefined && activeUsersCounter) {
-      document.getElementById('userCountValue').textContent = data.count;
-    }
-  } catch (e) {
-    console.warn('Failed to fetch active users count:', e);
-  }
-}
-
-function showCounterOnStartMenu() {
-  const startMenu = document.getElementById('startMenu');
-  const observer = new MutationObserver(() => {
-    if (startMenu.style.display === 'flex' || startMenu.style.display === '') {
-      activeUsersCounter.style.display = 'block';
-    } else {
-      activeUsersCounter.style.display = 'none';
-    }
-  });
-  observer.observe(startMenu, { attributes: true, attributeFilter: ['style'] });
-  if (startMenu.style.display === 'flex' || startMenu.style.display === '') {
-    activeUsersCounter.style.display = 'block';
-  }
-}
-
 // ============================================
-// MULTIPLAYER MODULE (PeerJS-based)
-// ============================================
-const MAX_PLAYERS = 30;
-const PEER_PREFIX = 'sbg-bg-';
-
-let mpRoomCode = '';
-let mpPlayerName = '';
-let isHost = false;
-let mpGameStarted = false;
-let mpCurrentQuestion = 0;
-let mpQuestions = [];
-let mpScores = {};
-let mpPlayers = [];
-let mpAnswers = {};
-let mpQuestionTimer = null;
-let selectedQuestions = null;
-let selectedThemeKey = null;
-
-let peer = null;
-let hostConnections = {};
-let joinerConnection = null;
-
-// ---- Room screen ----
-let roomScreen = document.getElementById('mpRoomScreen');
-if (!roomScreen) {
-    roomScreen = document.createElement('div');
-    roomScreen.id = 'mpRoomScreen';
-    roomScreen.className = 'multiplayer-room-screen';
-    roomScreen.innerHTML = `
-        <div class="room-content">
-            <h2>Стая</h2>
-            <p>Код: <span class="room-code" id="displayRoomCode">------</span></p>
-            <input type="text" id="mpNameInput" class="room-name-input" placeholder="Вашето име..." maxlength="20" autocomplete="off" />
-            <button id="mpConfirmNameBtn" class="start-room-btn" style="display:inline-block;" onclick="confirmNameAndConnect()">Потвърди името</button>
-            <p class="player-count" id="playerCountDisplay">Играчи: 0 / ${MAX_PLAYERS}</p>
-            <div class="player-list" id="playerList"></div>
-            <p id="connectionStatus" style="color:#ccc; margin:10px 0; display:none;">Очакване на играчи...</p>
-            <div id="themeBrowserArea" style="display:none;">
-                <p style="color:gold; margin-bottom:8px;">Изберете тема:</p>
-                <div class="theme-browser-inline" id="themeBrowserInline"></div>
-            </div>
-            <button id="startMpGameBtn" class="start-room-btn" disabled>Старт</button>
-            <button id="leaveRoomBtn" class="leave-room-btn">Излез</button>
-        </div>
-    `;
-    document.body.appendChild(roomScreen);
-}
-
-const displayRoomCode = document.getElementById('displayRoomCode');
-const mpNameInput = document.getElementById('mpNameInput');
-const mpConfirmNameBtn = document.getElementById('mpConfirmNameBtn');
-const playerCountDisplay = document.getElementById('playerCountDisplay');
-const playerListEl = document.getElementById('playerList');
-const themeBrowserArea = document.getElementById('themeBrowserArea');
-const themeBrowserInline = document.getElementById('themeBrowserInline');
-const startMpGameBtn = document.getElementById('startMpGameBtn');
-const leaveRoomBtn = document.getElementById('leaveRoomBtn');
-const connectionStatus = document.getElementById('connectionStatus');
-
-// ---- Cleanup ----
-function cleanupMultiplayer() {
-    if (peer) {
-        try { pee// ============================================
 // MULTIPLAYER MODULE (PeerJS + Scoring + Leaderboard)
 // ============================================
 const MAX_PLAYERS = 30;
