@@ -2042,6 +2042,415 @@ function confirmNameAndConnect() {
     mpNameInput.style.display = 'none';
     mpConfirmNameBtn.style.display = 'none';
 
+    if (isHost) {// ============================================
+// MULTIPLAYER MODULE (PeerJS + Scoring + Leaderboard)
+// ============================================
+const MAX_PLAYERS = 30;
+const PEER_PREFIX = 'sbg-bg-';
+const DEFAULT_MP_TIME_LIMIT = 15;
+
+let mpRoomCode = '';
+let mpPlayerName = '';
+let isHost = false;
+let mpGameStarted = false;
+let mpCurrentQuestion = 0;
+let mpQuestions = [];
+let mpScores = {};        
+let mpPlayers = [];
+let mpAnswers = {};       
+let mpQuestionTimer = null;
+let mpQuestionFinalized = false;
+let selectedQuestions = null;
+let selectedThemeKey = null;
+
+let mpQuestionStartTime = 0;
+let mpQuestionTimeLimit = DEFAULT_MP_TIME_LIMIT;
+
+let peer = null;
+let hostConnections = {};
+let joinerConnection = null;
+
+// ============================================
+// SCORING FORMULA
+// ============================================
+function calculatePoints(elapsedMs, timeLimitSec) {
+    const timeLimitMs = timeLimitSec * 1000;
+    if (elapsedMs >= timeLimitMs) return 0;
+    const graceMs = timeLimitMs * 0.2;
+    if (elapsedMs <= graceMs) return 1000;
+    const ratio = (elapsedMs - graceMs) / (timeLimitMs - graceMs);
+    return Math.round(1000 - 700 * ratio);
+}
+
+// ============================================
+// FLOATING POINTS NOTIFICATION
+// ============================================
+function showFloatingPoints(text, isCorrect) {
+    if (!document.getElementById('floatUpAnim')) {
+        const style = document.createElement('style');
+        style.id = 'floatUpAnim';
+        style.textContent = `
+            @keyframes floatUp {
+                0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+                20%  { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+                80%  { opacity: 1; transform: translate(-50%, -80%) scale(1); }
+                100% { opacity: 0; transform: translate(-50%, -120%) scale(0.8); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    const el = document.createElement('div');
+    el.textContent = text;
+    el.style.cssText = `
+        position: fixed; top: 50%; left: 50%;
+        font-size: 72px; font-weight: bold;
+        color: ${isCorrect ? 'gold' : '#ff4444'};
+        text-shadow: 3px 3px 8px black, 0 0 25px ${isCorrect ? 'gold' : '#ff4444'};
+        z-index: 10002; pointer-events: none;
+        font-family: 'Tahoma', sans-serif;
+        animation: floatUp 2s ease-out forwards;
+    `;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2000);
+}
+
+// ============================================
+// LEADERBOARD UI
+// ============================================
+let mpLeaderboardBtn = null;
+let mpLeaderboardModal = null;
+
+function createLeaderboardUI() {
+    if (document.getElementById('mpLeaderboardBtn')) return;
+
+    mpLeaderboardBtn = document.createElement('button');
+    mpLeaderboardBtn.id = 'mpLeaderboardBtn';
+    mpLeaderboardBtn.innerHTML = '🏆';
+    mpLeaderboardBtn.title = 'Класиране';
+    mpLeaderboardBtn.style.cssText = `
+        position: fixed;
+        top: 25px;
+        right: 25px;
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #ffd700, #ff8c00);
+        border: 3px solid #fff;
+        border-radius: 50%;
+        font-size: 30px;
+        cursor: pointer;
+        z-index: 5001;
+        box-shadow: 0 0 20px rgba(255,215,0,0.8);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s;
+    `;
+    mpLeaderboardBtn.onmouseenter = () => mpLeaderboardBtn.style.transform = 'scale(1.15)';
+    mpLeaderboardBtn.onmouseleave = () => mpLeaderboardBtn.style.transform = 'scale(1)';
+    mpLeaderboardBtn.onclick = showLeaderboard;
+    document.body.appendChild(mpLeaderboardBtn);
+
+    mpLeaderboardModal = document.createElement('div');
+    mpLeaderboardModal.id = 'mpLeaderboardModal';
+    mpLeaderboardModal.style.cssText = `
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.85);
+        z-index: 10001;
+        display: none;
+        justify-content: center;
+        align-items: center;
+    `;
+    mpLeaderboardModal.innerHTML = `
+        <div style="background: linear-gradient(135deg, #000066, #0000cc); border: 5px solid gold; border-radius: 20px; padding: 30px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; color: white; text-align: center; box-shadow: 0 0 50px rgba(255,215,0,0.7);">
+            <h2 style="color: gold; font-size: 32px; margin-bottom: 20px;">🏆 Класиране</h2>
+            <div id="mpLeaderboardContent"></div>
+            <button id="mpLeaderboardClose" style="margin-top: 20px; background: linear-gradient(135deg, #4f90ff, #2e58ff); color: white; border: 3px solid gold; padding: 12px 40px; font-size: 18px; border-radius: 10px; cursor: pointer; font-weight: bold;">Затвори</button>
+        </div>
+    `;
+    document.body.appendChild(mpLeaderboardModal);
+    document.getElementById('mpLeaderboardClose').onclick = () => {
+        mpLeaderboardModal.style.display = 'none';
+    };
+    mpLeaderboardModal.addEventListener('click', (e) => {
+        if (e.target === mpLeaderboardModal) mpLeaderboardModal.style.display = 'none';
+    });
+}
+
+function showLeaderboard() {
+    if (!mpLeaderboardModal) return;
+    renderLeaderboard();
+    mpLeaderboardModal.style.display = 'flex';
+}
+
+function renderLeaderboard() {
+    const content = document.getElementById('mpLeaderboardContent');
+    if (!content) return;
+
+    const sorted = mpPlayers.map(p => ({
+        name: p.name,
+        isHost: p.isHost,
+        points: mpScores[p.id] || 0
+    })).sort((a, b) => b.points - a.points);
+
+    if (sorted.length === 0) {
+        content.innerHTML = '<p>Няма играчи.</p>';
+        return;
+    }
+
+    let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
+    sorted.forEach((p, idx) => {
+        const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
+        const bg = idx === 0
+            ? 'linear-gradient(135deg, #ffd700, #ff8c00)'
+            : idx === 1
+                ? 'linear-gradient(135deg, #d0d0d0, #909090)'
+                : idx === 2
+                    ? 'linear-gradient(135deg, #cd7f32, #8b4513)'
+                    : 'rgba(0,0,100,0.6)';
+        const color = idx <= 2 ? '#000' : '#fff';
+        html += `
+            <div style="background: ${bg}; color: ${color}; padding: 12px 20px; border-radius: 10px; border: 2px solid gold; display: flex; justify-content: space-between; align-items: center; font-size: 18px; font-weight: bold;">
+                <span>${medal} ${escapeHtml(p.name)}${p.isHost ? ' 👑' : ''}</span>
+                <span>${p.points} т.</span>
+            </div>
+        `;
+    });
+    html += '</div>';
+    content.innerHTML = html;
+}
+
+function showLeaderboardButton(show) {
+    if (!mpLeaderboardBtn) return;
+    mpLeaderboardBtn.style.display = show ? 'flex' : 'none';
+    if (!show && mpLeaderboardModal) mpLeaderboardModal.style.display = 'none';
+}
+
+// ============================================
+// ROOM SCREEN
+// ============================================
+let roomScreen = document.getElementById('mpRoomScreen');
+if (!roomScreen) {
+    roomScreen = document.createElement('div');
+    roomScreen.id = 'mpRoomScreen';
+    roomScreen.className = 'multiplayer-room-screen';
+    roomScreen.innerHTML = `
+        <div class="room-content">
+            <h2>Стая</h2>
+            <p>Код: <span class="room-code" id="displayRoomCode">------</span></p>
+            <input type="text" id="mpNameInput" class="room-name-input" placeholder="Вашето име..." maxlength="20" autocomplete="off" />
+            <button id="mpConfirmNameBtn" class="start-room-btn" style="display:inline-block;" onclick="confirmNameAndConnect()">Потвърди името</button>
+            <p class="player-count" id="playerCountDisplay">Играчи: 0 / ${MAX_PLAYERS}</p>
+            <div class="player-list" id="playerList"></div>
+            <p id="connectionStatus" style="color:#ccc; margin:10px 0; display:none;">Очакване на играчи...</p>
+            <div id="themeBrowserArea" style="display:none;">
+                <p style="color:gold; margin-bottom:8px;">Изберете тема:</p>
+                <div class="theme-browser-inline" id="themeBrowserInline"></div>
+            </div>
+            <button id="startMpGameBtn" class="start-room-btn" disabled>Старт</button>
+            <button id="leaveRoomBtn" class="leave-room-btn">Излез</button>
+        </div>
+    `;
+    document.body.appendChild(roomScreen);
+}
+
+const displayRoomCode = document.getElementById('displayRoomCode');
+const mpNameInput = document.getElementById('mpNameInput');
+const mpConfirmNameBtn = document.getElementById('mpConfirmNameBtn');
+const playerCountDisplay = document.getElementById('playerCountDisplay');
+const playerListEl = document.getElementById('playerList');
+const themeBrowserArea = document.getElementById('themeBrowserArea');
+const themeBrowserInline = document.getElementById('themeBrowserInline');
+const startMpGameBtn = document.getElementById('startMpGameBtn');
+const leaveRoomBtn = document.getElementById('leaveRoomBtn');
+const connectionStatus = document.getElementById('connectionStatus');
+
+// ============================================
+// CLEANUP
+// ============================================
+function cleanupMultiplayer() {
+    if (peer) {
+        try { peer.destroy(); } catch (e) {}
+        peer = null;
+    }
+    hostConnections = {};
+    joinerConnection = null;
+    mpPlayers = [];
+    mpAnswers = {};
+    mpScores = {};
+    mpGameStarted = false;
+    mpCurrentQuestion = 0;
+    mpQuestionFinalized = false;
+    if (mpQuestionTimer) { clearTimeout(mpQuestionTimer); mpQuestionTimer = null; }
+    showLeaderboardButton(false);
+}
+
+// ============================================
+// UI HELPERS
+// ============================================
+function updatePlayerListUI() {
+    if (!playerListEl) return;
+    playerListEl.innerHTML = mpPlayers.map(p => {
+        const card = document.createElement('div');
+        card.className = 'player-card' + (p.isHost ? ' host-card' : '');
+        card.innerHTML = `${p.isHost ? '👑' : ''} ${escapeHtml(p.name)}`;
+        return card.outerHTML;
+    }).join('');
+    playerCountDisplay.textContent = `Играчи: ${mpPlayers.length} / ${MAX_PLAYERS}`;
+}
+
+function updateStartButtonState() {
+    if (!isHost || !startMpGameBtn) return;
+    const hasOtherPlayers = mpPlayers.length > 1;
+    const hasTheme = selectedQuestions && selectedQuestions.length > 0;
+    startMpGameBtn.disabled = !(hasOtherPlayers && hasTheme);
+}
+
+// ============================================
+// HOST: CREATE ROOM
+// ============================================
+function createMultiplayerRoom() {
+    cleanupMultiplayer();
+    mpRoomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    displayRoomCode.textContent = mpRoomCode;
+    isHost = true;
+
+    document.getElementById('multiplayerMenuScreen').style.display = 'none';
+    roomScreen.style.display = 'flex';
+
+    mpNameInput.style.display = 'inline-block';
+    mpNameInput.value = '';
+    mpConfirmNameBtn.style.display = 'inline-block';
+    startMpGameBtn.style.display = 'none';
+    startMpGameBtn.disabled = true;
+    themeBrowserArea.style.display = 'none';
+    connectionStatus.style.display = 'block';
+    connectionStatus.textContent = 'Свързване към сървъра...';
+    updatePlayerListUI();
+
+    const peerId = PEER_PREFIX + mpRoomCode;
+    console.log('🟢 Creating host peer:', peerId);
+
+    peer = new Peer(peerId, {
+        debug: 1,
+        config: {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        }
+    });
+
+    peer.on('open', (id) => {
+        console.log('🟢 Host peer ready:', id);
+        connectionStatus.textContent = 'Очакване на играчи...';
+    });
+
+    peer.on('connection', (conn) => {
+        console.log('🔗 Incoming connection:', conn.peer);
+        if (!isHost) return;
+        hostConnections[conn.peer] = conn;
+
+        conn.on('open', () => console.log('✅ Connection opened:', conn.peer));
+
+        conn.on('data', (data) => {
+            console.log('📩 Host got from', conn.peer, ':', data);
+            handleHostMessage(conn.peer, data);
+        });
+
+        conn.on('close', () => {
+            console.log('🔴 Connection closed:', conn.peer);
+            const idx = mpPlayers.findIndex(p => p.id === conn.peer);
+            if (idx !== -1) {
+                mpPlayers.splice(idx, 1);
+                updatePlayerListUI();
+                broadcastPlayerList();
+                updateStartButtonState();
+            }
+            delete hostConnections[conn.peer];
+        });
+
+        conn.on('error', (err) => console.error('❌ Conn error:', err));
+    });
+
+    peer.on('error', (err) => {
+        console.error('❌ Peer error:', err);
+        if (err.type === 'unavailable-id') alert('Кодът на стаята е зает. Опитайте отново.');
+        else alert('Грешка при свързване: ' + err.message);
+    });
+}
+
+// ============================================
+// JOINER: JOIN ROOM
+// ============================================
+function joinMultiplayerRoom(code) {
+    cleanupMultiplayer();
+    mpRoomCode = code.toUpperCase().trim();
+    displayRoomCode.textContent = mpRoomCode;
+    isHost = false;
+
+    document.getElementById('joinRoomScreen').style.display = 'none';
+    roomScreen.style.display = 'flex';
+
+    mpNameInput.style.display = 'inline-block';
+    mpNameInput.value = '';
+    mpConfirmNameBtn.style.display = 'inline-block';
+    startMpGameBtn.style.display = 'none';
+    startMpGameBtn.disabled = true;
+    themeBrowserArea.style.display = 'none';
+    connectionStatus.style.display = 'block';
+    connectionStatus.textContent = 'Свързване към стаята...';
+    updatePlayerListUI();
+
+    peer = new Peer({
+        debug: 1,
+        config: {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        }
+    });
+
+    peer.on('open', (id) => {
+        console.log('🟢 Joiner peer ready:', id);
+        const hostPeerId = PEER_PREFIX + mpRoomCode;
+        joinerConnection = peer.connect(hostPeerId, { reliable: true });
+
+        joinerConnection.on('open', () => {
+            console.log('✅ Connected to host');
+            connectionStatus.textContent = 'Свързан! Въведете име и потвърдете.';
+        });
+
+        joinerConnection.on('data', (data) => {
+            console.log('📩 Joiner got:', data);
+            handleJoinerMessage(data);
+        });
+
+        joinerConnection.on('close', () => {
+            console.log('🔴 Disconnected from host');
+            alert('Връзката с хоста беше прекъсната.');
+            leaveRoomBtn.click();
+        });
+    });
+
+    peer.on('error', (err) => {
+        console.error('❌ Peer error:', err);
+        if (err.type === 'peer-unavailable') alert('Стаята не е намерена. Проверете кода.');
+        else alert('Грешка: ' + err.message);
+    });
+}
+
+// ============================================
+// CONFIRM NAME
+// ============================================
+function confirmNameAndConnect() {
+    mpPlayerName = mpNameInput.value.trim() || 'Играч-' + Math.floor(Math.random() * 1000);
+    if (mpPlayerName.length > 20) mpPlayerName = mpPlayerName.substring(0, 20);
+
+    mpNameInput.style.display = 'none';
+    mpConfirmNameBtn.style.display = 'none';
+
     if (isHost) {
         mpPlayers = [{ id: 'host', name: mpPlayerName, isHost: true }];
         updatePlayerListUI();
@@ -2063,7 +2472,9 @@ function confirmNameAndConnect() {
     }
 }
 
-// ---- Host message handler ----
+// ============================================
+// HOST MESSAGE HANDLER
+// ============================================
 function handleHostMessage(peerId, msg) {
     switch (msg.type) {
         case 'PLAYER_JOIN': {
@@ -2076,25 +2487,29 @@ function handleHostMessage(peerId, msg) {
 
             const newConn = hostConnections[peerId];
             if (newConn && newConn.open) {
-                newConn.send({
-                    type: 'ROOM_STATE',
-                    players: mpPlayers,
-                    gameStarted: mpGameStarted
-                });
+                newConn.send({ type: 'ROOM_STATE', players: mpPlayers, gameStarted: mpGameStarted });
             }
             break;
         }
         case 'ANSWER': {
-            mpAnswers[peerId] = msg.answerIndex;
-            console.log(`📝 Answer from ${peerId}:`, msg.answerIndex);
-            const answeredCount = Object.keys(mpAnswers).length;
-            if (answeredCount >= mpPlayers.length) finishMpQuestion();
+            const elapsed = typeof msg.elapsedMs === 'number' ? msg.elapsedMs : 0;
+            mpAnswers[peerId] = {
+                answerIndex: msg.answerIndex,
+                elapsedMs: elapsed,
+                points: calculatePoints(elapsed, mpQuestionTimeLimit)
+            };
+            console.log(`📝 ${peerId} answered idx=${msg.answerIndex} in ${elapsed}ms (${mpAnswers[peerId].points} pts)`);
+            if (Object.keys(mpAnswers).length >= mpPlayers.length) {
+                finishMpQuestion();
+            }
             break;
         }
     }
 }
 
-// ---- Joiner message handler ----
+// ============================================
+// JOINER MESSAGE HANDLER
+// ============================================
 function handleJoinerMessage(msg) {
     switch (msg.type) {
         case 'ROOM_STATE':
@@ -2129,7 +2544,9 @@ function broadcastPlayerList() {
     }
 }
 
-// ---- Theme browser (host only) ----
+// ============================================
+// THEME BROWSER (HOST)
+// ============================================
 async function populateThemeBrowser() {
     if (!themeBrowserInline) return;
     themeBrowserInline.innerHTML = '';
@@ -2179,7 +2596,9 @@ async function populateThemeBrowser() {
     }
 }
 
-// ---- Start game ----
+// ============================================
+// START GAME
+// ============================================
 if (startMpGameBtn) {
     startMpGameBtn.addEventListener('click', () => {
         if (!isHost || mpGameStarted) return;
@@ -2243,9 +2662,15 @@ function beginMpGame(questions, themeKey) {
     const answersContainer = document.getElementById('answersContainer');
     if (answersContainer) answersContainer.innerHTML = '';
 
+    createLeaderboardUI();
+    showLeaderboardButton(true);
+
     if (isHost) sendNextMpQuestion();
 }
 
+// ============================================
+// NEXT QUESTION (HOST)
+// ============================================
 function sendNextMpQuestion() {
     if (!isHost) return;
     if (mpQuestionTimer) clearTimeout(mpQuestionTimer);
@@ -2258,27 +2683,36 @@ function sendNextMpQuestion() {
         return;
     }
     const q = mpQuestions[mpCurrentQuestion];
+    const timeLimit = q.timeLimit || DEFAULT_MP_TIME_LIMIT;
+    mpQuestionFinalized = false;
+    mpAnswers = {};
+
     const msg = {
         type: 'QUESTION',
         questionIndex: mpCurrentQuestion,
         question: q.question,
         answers: q.answers,
         correct: q.correct,
-        timeLimit: 15
+        timeLimit: timeLimit
     };
     for (const pid in hostConnections) {
         if (hostConnections[pid].open) hostConnections[pid].send(msg);
     }
-    mpAnswers = {};
     displayMpQuestion(msg);
+
     mpQuestionTimer = setTimeout(() => {
-        mpCurrentQuestion++;
-        sendNextMpQuestion();
-    }, 15000);
+        finishMpQuestion();
+    }, timeLimit * 1000);
 }
 
+// ============================================
+// DISPLAY QUESTION (BOTH HOST & JOINER)
+// ============================================
 function displayMpQuestion(data) {
+    mpQuestionStartTime = Date.now();
+    mpQuestionTimeLimit = data.timeLimit || DEFAULT_MP_TIME_LIMIT;
     if (typeof data.questionIndex === 'number') mpCurrentQuestion = data.questionIndex;
+
     document.getElementById('questionText').textContent = data.question;
     const answersContainer = document.getElementById('answersContainer');
     answersContainer.innerHTML = '';
@@ -2287,11 +2721,12 @@ function displayMpQuestion(data) {
         btn.className = 'answer-btn';
         btn.textContent = `${String.fromCharCode(65 + idx)}) ${ans}`;
         btn.onclick = () => {
+            const elapsedMs = Date.now() - mpQuestionStartTime;
             if (isHost) {
-                handleHostMessage('host', { type: 'ANSWER', answerIndex: idx });
+                handleHostMessage('host', { type: 'ANSWER', answerIndex: idx, elapsedMs });
             } else {
                 if (joinerConnection && joinerConnection.open) {
-                    joinerConnection.send({ type: 'ANSWER', answerIndex: idx });
+                    joinerConnection.send({ type: 'ANSWER', answerIndex: idx, elapsedMs });
                 }
             }
             btn.disabled = true;
@@ -2300,26 +2735,45 @@ function displayMpQuestion(data) {
     });
 }
 
+// ============================================
+// FINISH QUESTION (HOST)
+// ============================================
 function finishMpQuestion() {
-    if (mpQuestionTimer) clearTimeout(mpQuestionTimer);
+    if (mpQuestionFinalized) return;
+    mpQuestionFinalized = true;
+    if (mpQuestionTimer) { clearTimeout(mpQuestionTimer); mpQuestionTimer = null; }
+
     const q = mpQuestions[mpCurrentQuestion];
     const correct = q.correct;
-    const results = mpPlayers.map(p => ({
-        name: p.name,
-        answer: mpAnswers[p.id],
-        correct: mpAnswers[p.id] === correct
-    }));
-    results.forEach(r => {
-        if (r.correct) {
-            const player = mpPlayers.find(p => p.name === r.name);
-            if (player) mpScores[player.id] = (mpScores[player.id] || 0) + 1;
-        }
+
+    const results = mpPlayers.map(p => {
+        const ans = mpAnswers[p.id];
+        const isCorrect = !!(ans && ans.answerIndex === correct);
+        const pointsEarned = isCorrect ? (ans.points || 0) : 0;
+        if (isCorrect) mpScores[p.id] = (mpScores[p.id] || 0) + pointsEarned;
+        return {
+            id: p.id,
+            name: p.name,
+            answer: ans ? ans.answerIndex : -1,
+            correct: isCorrect,
+            pointsEarned: pointsEarned,
+            elapsedMs: ans ? ans.elapsedMs : null
+        };
     });
-    const msg = { type: 'ROUND_RESULT', correct, results, scores: mpScores, questionIndex: mpCurrentQuestion };
+
+    const msg = {
+        type: 'ROUND_RESULT',
+        correct,
+        results,
+        scores: mpScores,
+        questionIndex: mpCurrentQuestion
+    };
+
     for (const pid in hostConnections) {
         if (hostConnections[pid].open) hostConnections[pid].send(msg);
     }
     processMpRoundResult(msg);
+
     mpCurrentQuestion++;
     if (mpCurrentQuestion < mpQuestions.length) {
         mpQuestionTimer = setTimeout(() => sendNextMpQuestion(), 4000);
@@ -2332,51 +2786,72 @@ function finishMpQuestion() {
     }
 }
 
+// ============================================
+// PROCESS ROUND RESULT (BOTH)
+// ============================================
 function processMpRoundResult(data) {
     const btns = document.querySelectorAll('.answer-btn');
     const correctBtn = btns[data.correct];
-    const myId = isHost ? 'host' : (peer ? peer.id : null);
-    const myPlayer = mpPlayers.find(p => p.id === myId);
-    const playerResult = myPlayer ? data.results.find(r => r.name === myPlayer.name) : null;
 
     btns.forEach(b => b.disabled = true);
 
-    if (playerResult && playerResult.correct) {
-        if (correctBtn) {
-            correctBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
-            correctBtn.style.color = '#000066';
-            correctBtn.style.border = '3px solid #00aa00';
-        }
+    if (correctBtn) {
+        correctBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
+        correctBtn.style.color = '#000066';
+        correctBtn.style.border = '3px solid #00aa00';
+    }
+
+    const myName = mpPlayerName;
+    const playerResult = data.results.find(r => r.name === myName);
+    const isCorrect = playerResult && playerResult.correct;
+    const myPoints = playerResult ? playerResult.pointsEarned : 0;
+
+    if (isCorrect) {
         const qIdx = data.questionIndex || 0;
         let sound = 'correctAnswerSound';
         if (qIdx >= 10) sound = 'correctAnswer3';
         else if (qIdx >= 5) sound = 'correctAnswer2';
         playSound(sound);
+        showFloatingPoints(`+${myPoints}`, true);
     } else {
-        if (correctBtn) {
-            correctBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
-            correctBtn.style.color = '#000066';
-            correctBtn.style.border = '3px solid #00aa00';
-        }
         playSound('wrongAnswerSound');
+        showFloatingPoints('0', false);
+    }
+
+    mpScores = data.scores;
+
+    if (mpLeaderboardModal && mpLeaderboardModal.style.display === 'flex') {
+        renderLeaderboard();
     }
 }
 
+// ============================================
+// END GAME
+// ============================================
 function endMpGame(scores) {
-    if (mpQuestionTimer) clearTimeout(mpQuestionTimer);
+    if (mpQuestionTimer) { clearTimeout(mpQuestionTimer); mpQuestionTimer = null; }
+
     const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
     const winner = sorted[0];
     if (winner) {
         const wp = mpPlayers.find(p => p.id === winner[0]);
-        alert(`🏆 Победител: ${wp ? wp.name : 'Unknown'} с ${winner[1]} точки!`);
+        if (wp) {
+            alert(`🏆 Победител: ${wp.name} с ${winner[1]} точки!`);
+        }
     }
-    cleanupMultiplayer();
-    roomScreen.style.display = 'none';
-    document.getElementById('gameContainer').style.display = 'none';
-    document.getElementById('multiplayerMenuScreen').style.display = 'flex';
+
+    if (mpLeaderboardModal) {
+        renderLeaderboard();
+        mpLeaderboardModal.style.display = 'flex';
+    }
+
+    showLeaderboardButton(false);
+    if (mpLeaderboardBtn) mpLeaderboardBtn.style.display = 'flex';
 }
 
-// ---- Leave ----
+// ============================================
+// LEAVE ROOM
+// ============================================
 if (leaveRoomBtn) {
     leaveRoomBtn.addEventListener('click', () => {
         cleanupMultiplayer();
@@ -2386,7 +2861,7 @@ if (leaveRoomBtn) {
 }
 
 window.addEventListener('beforeunload', () => {
-    if (peer) { try { peer.destroy(); } catch(e) {} }
+    if (peer) { try { peer.destroy(); } catch (e) {} }
 });
 
 // ============================================
