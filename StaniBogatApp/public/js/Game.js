@@ -766,6 +766,19 @@ function initializeStartMenu() {
 
     if (gameBack) {
         gameBack.addEventListener('click', () => {
+            // MULTIPLAYER EXIT FIX
+            if (typeof mpGameStarted !== 'undefined' && mpGameStarted) {
+                cleanupMultiplayer();
+                roomScreen.style.display = 'none';
+                gameContainer.style.display = 'none';
+                document.getElementById('multiplayerMenuScreen').style.display = 'flex';
+                if (backButtonContainer) backButtonContainer.style.display = 'none';
+                if (moneyTreeToggle) moneyTreeToggle.style.display = 'none';
+                if (moneyTree) moneyTree.style.display = 'none';
+                if (levelIndicator) levelIndicator.style.display = 'none';
+                return; // Stop here so single-player logic doesn't run
+            }
+
             cancelAllTimers();
             stopUserThemeMusic();
             performTransition(() => {
@@ -2068,7 +2081,7 @@ const connectionStatus = document.getElementById('connectionStatus');
 // CLEANUP
 // ============================================
 function cleanupMultiplayer() {
-    mpGameStarted = false; // Immediately stop game logic
+    mpGameStarted = false; 
     if (mpQuestionTimer) { clearTimeout(mpQuestionTimer); mpQuestionTimer = null; }
     stopMpCountdown();
     
@@ -2085,6 +2098,21 @@ function cleanupMultiplayer() {
     mpQuestionFinalized = false;
     
     showLeaderboardButton(false);
+    if (mpLeaderboardModal) mpLeaderboardModal.style.display = 'none';
+
+    // Hide single player UI if it was showing
+    const gameContainer = document.getElementById('gameContainer');
+    if (gameContainer) gameContainer.style.display = 'none';
+    const moneyTree = document.getElementById('moneyTree');
+    if (moneyTree) moneyTree.style.display = 'none';
+    const levelIndicator = document.querySelector('.level-indicator');
+    if (levelIndicator) levelIndicator.style.display = 'none';
+    const backButtonContainer = document.querySelector('.game-back-button-container');
+    if (backButtonContainer) backButtonContainer.style.display = 'none';
+    const gameBack = document.getElementById('gameBackButton');
+    if (gameBack) gameBack.style.display = 'none';
+    const moneyTreeToggle = document.getElementById('moneyTreeToggle');
+    if (moneyTreeToggle) moneyTreeToggle.style.display = 'none';
 }
 
 // ============================================
