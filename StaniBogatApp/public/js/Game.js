@@ -1796,6 +1796,11 @@ let peer = null;
 let hostConnections = {};
 let joinerConnection = null;
 
+// --- UI Elements for Countdown and Skip ---
+let mpCountdownInterval = null;
+let mpCountdownElement = null;
+let mpSkipBtn = null;
+
 // ============================================
 // SCORING FORMULA
 // ============================================
@@ -1812,6 +1817,7 @@ function calculatePoints(elapsedMs, timeLimitSec) {
 // FLOATING POINTS NOTIFICATION
 // ============================================
 function showFloatingPoints(text, isCorrect) {
+    if (!mpGameStarted) return; // Don't show if game is not active
     if (!document.getElementById('floatUpAnim')) {
         const style = document.createElement('style');
         style.id = 'floatUpAnim';
@@ -1838,6 +1844,73 @@ function showFloatingPoints(text, isCorrect) {
     `;
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 2000);
+}
+
+// ============================================
+// COUNTDOWN & SKIP UI CREATION
+// ============================================
+function createMpGameUI() {
+    if (!document.getElementById('mpCountdownDisplay')) {
+        mpCountdownElement = document.createElement('div');
+        mpCountdownElement.id = 'mpCountdownDisplay';
+        mpCountdownElement.style.cssText = `
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.85); color: gold; border: 3px solid gold;
+            padding: 10px 30px; border-radius: 20px; font-size: 24px; font-weight: bold;
+            z-index: 5002; display: none; box-shadow: 0 0 20px rgba(255,215,0,0.5);
+            font-family: 'Tahoma', sans-serif; text-shadow: 1px 1px 3px black;
+        `;
+        document.body.appendChild(mpCountdownElement);
+    } else {
+        mpCountdownElement = document.getElementById('mpCountdownDisplay');
+    }
+
+    if (!document.getElementById('mpSkipBtn')) {
+        mpSkipBtn = document.createElement('button');
+        mpSkipBtn.id = 'mpSkipBtn';
+        mpSkipBtn.textContent = '▶ Следващ въпрос';
+        mpSkipBtn.style.cssText = `
+            position: fixed; bottom: 30px; right: 30px;
+            background: linear-gradient(135deg, #4f90ff, #2e58ff); color: white;
+            border: 3px solid gold; padding: 12px 25px; border-radius: 10px;
+            font-size: 18px; font-weight: bold; cursor: pointer;
+            z-index: 5002; display: none; box-shadow: 0 0 15px rgba(255,215,0,0.5);
+            transition: all 0.3s;
+        `;
+        mpSkipBtn.onmouseenter = () => mpSkipBtn.style.transform = 'scale(1.05)';
+        mpSkipBtn.onmouseleave = () => mpSkipBtn.style.transform = 'scale(1)';
+        mpSkipBtn.onclick = () => {
+            if (isHost && mpGameStarted) {
+                finishMpQuestion();
+            }
+        };
+        document.body.appendChild(mpSkipBtn);
+    } else {
+        mpSkipBtn = document.getElementById('mpSkipBtn');
+    }
+}
+
+function startMpCountdown(timeLimitSec) {
+    stopMpCountdown();
+    if (!mpCountdownElement) return;
+    mpCountdownElement.style.display = 'block';
+    let timeLeft = timeLimitSec;
+    mpCountdownElement.textContent = `⏱ ${timeLeft}s`;
+    mpCountdownInterval = setInterval(() => {
+        timeLeft--;
+        if (timeLeft <= 0) {
+            mpCountdownElement.textContent = `⏱ 0s`;
+            clearInterval(mpCountdownInterval);
+        } else {
+            mpCountdownElement.textContent = `⏱ ${timeLeft}s`;
+        }
+    }, 1000);
+}
+
+function stopMpCountdown() {
+    if (mpCountdownInterval) clearInterval(mpCountdownInterval);
+    if (mpCountdownElement) mpCountdownElement.style.display = 'none';
+    if (mpSkipBtn) mpSkipBtn.style.display = 'none';
 }
 
 // ============================================
@@ -1995,6 +2068,10 @@ const connectionStatus = document.getElementById('connectionStatus');
 // CLEANUP
 // ============================================
 function cleanupMultiplayer() {
+    mpGameStarted = false; // Immediately stop game logic
+    if (mpQuestionTimer) { clearTimeout(mpQuestionTimer); mpQuestionTimer = null; }
+    stopMpCountdown();
+    
     if (peer) {
         try { peer.destroy(); } catch (e) {}
         peer = null;
@@ -2004,10 +2081,9 @@ function cleanupMultiplayer() {
     mpPlayers = [];
     mpAnswers = {};
     mpScores = {};
-    mpGameStarted = false;
     mpCurrentQuestion = 0;
     mpQuestionFinalized = false;
-    if (mpQuestionTimer) { clearTimeout(mpQuestionTimer); mpQuestionTimer = null; }
+    
     showLeaderboardButton(false);
 }
 
@@ -2218,6 +2294,7 @@ function handleHostMessage(peerId, msg) {
             break;
         }
         case 'ANSWER': {
+            if (!mpGameStarted || mpQuestionFinalized) return;
             const elapsed = typeof msg.elapsedMs === 'number' ? msg.elapsedMs : 0;
             mpAnswers[peerId] = {
                 answerIndex: msg.answerIndex,
@@ -2225,6 +2302,8 @@ function handleHostMessage(peerId, msg) {
                 points: calculatePoints(elapsed, mpQuestionTimeLimit)
             };
             console.log(`📝 ${peerId} answered idx=${msg.answerIndex} in ${elapsed}ms (${mpAnswers[peerId].points} pts)`);
+            
+            // If everyone has answered, we can auto-advance for the host
             if (Object.keys(mpAnswers).length >= mpPlayers.length) {
                 finishMpQuestion();
             }
@@ -2390,6 +2469,7 @@ function beginMpGame(questions, themeKey) {
 
     createLeaderboardUI();
     showLeaderboardButton(true);
+    createMpGameUI();
 
     if (isHost) sendNextMpQuestion();
 }
@@ -2447,6 +2527,7 @@ function displayMpQuestion(data) {
         btn.className = 'answer-btn';
         btn.textContent = `${String.fromCharCode(65 + idx)}) ${ans}`;
         btn.onclick = () => {
+            if (btn.disabled) return; // Prevent double click
             const elapsedMs = Date.now() - mpQuestionStartTime;
             if (isHost) {
                 handleHostMessage('host', { type: 'ANSWER', answerIndex: idx, elapsedMs });
@@ -2456,18 +2537,29 @@ function displayMpQuestion(data) {
                 }
             }
             btn.disabled = true;
+            btn.style.opacity = '0.5'; // Visually mark as answered
         };
         answersContainer.appendChild(btn);
     });
+
+    // Start timer
+    startMpCountdown(mpQuestionTimeLimit);
+    
+    // Show skip button for host
+    if (isHost && mpSkipBtn) {
+        mpSkipBtn.style.display = 'block';
+    }
 }
 
 // ============================================
 // FINISH QUESTION (HOST)
 // ============================================
 function finishMpQuestion() {
-    if (mpQuestionFinalized) return;
+    if (!isHost || !mpGameStarted || mpQuestionFinalized) return;
     mpQuestionFinalized = true;
+    
     if (mpQuestionTimer) { clearTimeout(mpQuestionTimer); mpQuestionTimer = null; }
+    stopMpCountdown();
 
     const q = mpQuestions[mpCurrentQuestion];
     const correct = q.correct;
@@ -2516,15 +2608,20 @@ function finishMpQuestion() {
 // PROCESS ROUND RESULT (BOTH)
 // ============================================
 function processMpRoundResult(data) {
+    stopMpCountdown(); // Stop countdown when results are shown
+
     const btns = document.querySelectorAll('.answer-btn');
     const correctBtn = btns[data.correct];
 
-    btns.forEach(b => b.disabled = true);
+    btns.forEach(b => {
+        b.disabled = true;
+    });
 
     if (correctBtn) {
         correctBtn.style.background = 'linear-gradient(135deg, #00ff30, #00cc00)';
         correctBtn.style.color = '#000066';
         correctBtn.style.border = '3px solid #00aa00';
+        correctBtn.style.opacity = '1';
     }
 
     const myName = mpPlayerName;
@@ -2556,6 +2653,8 @@ function processMpRoundResult(data) {
 // ============================================
 function endMpGame(scores) {
     if (mpQuestionTimer) { clearTimeout(mpQuestionTimer); mpQuestionTimer = null; }
+    stopMpCountdown();
+    mpGameStarted = false;
 
     const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
     const winner = sorted[0];
@@ -2571,8 +2670,8 @@ function endMpGame(scores) {
         mpLeaderboardModal.style.display = 'flex';
     }
 
-    showLeaderboardButton(false);
-    if (mpLeaderboardBtn) mpLeaderboardBtn.style.display = 'flex';
+    // Keep the leaderboard button visible so they can view it, but hide the skip button
+    if (mpSkipBtn) mpSkipBtn.style.display = 'none';
 }
 
 // ============================================
