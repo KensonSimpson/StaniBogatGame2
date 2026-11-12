@@ -767,7 +767,7 @@ function initializeStartMenu() {
     if (gameBack) {
         gameBack.addEventListener('click', () => {
             // MULTIPLAYER EXIT FIX
-            if (typeof mpGameStarted !== 'undefined' && mpGameStarted) {
+            if (peer) {
                 cleanupMultiplayer();
                 roomScreen.style.display = 'none';
                 gameContainer.style.display = 'none';
